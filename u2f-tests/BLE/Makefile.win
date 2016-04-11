@@ -1,0 +1,69 @@
+
+
+all: BLETest.exe
+
+CFLAGS = -nologo -EHsc -W3 -Icore/include -IBleApi -Ible_util -DPLATFORM_WINDOWS -D__OS_WIN
+
+# Switching to default __stdcall calling convention. works around a bug in the Windows 8.0 Ble headers.
+CFLAGS = $(CFLAGS) -Gz
+
+LDFLAGS = setupapi.lib ws2_32.lib
+
+
+# Crypto code.
+LIBMINCRYPT=dsa_sig.obj p256.obj p256_ec.obj p256_ecdsa.obj sha256.obj
+
+dsa_sig.obj: core/libmincrypt/dsa_sig.c
+        $(CC) -Dinline="" -D"dst[P256_NBYTES]"="*dst" -c $(CFLAGS) core/libmincrypt/dsa_sig.c
+
+p256.obj: core/libmincrypt/p256.c
+        $(CC) -c $(CFLAGS) core/libmincrypt/p256.c
+
+p256_ec.obj: core/libmincrypt/p256_ec.c
+        $(CC) -c $(CFLAGS) core/libmincrypt/p256_ec.c
+
+p256_ecdsa.obj: core/libmincrypt/p256_ecdsa.c
+        $(CC) -c $(CFLAGS) core/libmincrypt/p256_ecdsa.c
+
+sha256.obj: core/libmincrypt/sha256.c
+        $(CC) -c $(CFLAGS) core/libmincrypt/sha256.c
+
+# BLE Api
+BLEAPI_HEADER=BleApi/BleApi.h BleApi/BleApiError.h BleApi/BleApiWindows.h BleApi/fido_apduresponses.h BleApi/fido_ble.h BleApi/BleDevice.h
+BLEAPI=BleApi.obj BleApiWindows.obj BleDevice.obj BleDeviceWindows.obj
+
+BleApi.obj: BleApi/BleApi.cpp $(BLEAPI_HEADER)
+	$(CXX) -c $(CFLAGS) BleApi/BleApi.cpp -Fo$@
+
+BleApiWindows.obj: BleApi/BleApiWindows.cpp $(BLEAPI_HEADER)
+	$(CXX) -c $(CFLAGS) BleApi/BleApiWindows.cpp -Fo$@
+
+BleDevice.obj: BleApi/BleDevice.cpp $(BLEAPI_HEADER)
+	$(CXX) -c $(CFLAGS) BleApi/BleDevice.cpp -Fo$@
+
+BleDeviceWindows.obj: BleApi/BleDeviceWindows.h $(BLEAPI_HEADER)
+	$(CXX) -c $(CFLAGS) BleApi/BleDeviceWindows.cpp -Fo$@
+
+# utility tools.
+ble_util.obj: ble_util/ble_util.cpp ble_util/ble_util.h
+        $(CXX) -c $(CFLAGS) ble_util/ble_util.cpp -Fo$@
+
+# Core test program.
+BleApiTest.exe: BleApiTest/BleApiTest.cpp ble_util.obj $(BLEAPI)
+        $(CXX) $(CFLAGS) BleApiTest/BleApiTest.cpp ble_util.obj $(BLEAPI) $(LDFLAGS)
+
+# BLE Test
+BLETEST=U2FTests.obj BLETransportTests.obj
+U2FTests.obj: BLETest/U2FTests.cpp BLETest/U2FTests.h $(BLEAPI_HEADER)
+	$(CXX) -c $(CFLAGS) BLETest/U2FTests.cpp -Fo$@
+
+BLETransportTests.obj: BLETest/BLETransportTests.cpp BLETest/U2FTests.h $(BLEAPI_HEADER)
+	$(CXX) -c $(CFLAGS) BLETest/BLETransportTests.cpp -Fo$@
+
+
+# Actual BLE tests
+BLETest.exe: BLETest/BLETest.cpp ble_util.obj $(BLEAPI) $(BLETEST) $(LIBMINCRYPT)
+        $(CXX) $(CFLAGS) BLETest/BLETest.cpp ble_util.obj $(BLEAPI) $(BLETEST) $(LIBMINCRYPT) $(LDFLAGS) -Fe$@
+
+clean:
+	del *.exe *.obj

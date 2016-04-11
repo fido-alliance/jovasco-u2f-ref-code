@@ -1,0 +1,57 @@
+
+A number of U2F BLE conformance tests:
+
+	- BLE Transport tests
+	- U2F Raw Message tests.
+	- Limited ADPU encoding tests
+
+
+To build these tests you will need:
+
+	git clone https://android.googlesource.com/platform/system/core
+
+
+Supported platforms:
+	Windows 8
+
+
+Building for Windows:
+	nmake -f Makefile.win
+
+
+IMPORTANT:
+	Windows does NOT support resolvable private addresses.
+
+
+Usage
+
+By default the test will select the first U2F device reported by Windows.
+You can list the available devices as follows:
+
+	BLETest -l
+
+Which will return the device Identifiers of the available FIDO BLE devices.
+You can then run the test on a specific device by doing:
+
+	BLETest -d "<device identifier>"
+
+Full usage:
+
+Usage: BLETest.exe [ -d <device-identifier>] [-l] [-h] [-a] [-v] [-V] [-p] [-e] [-u] [-t] [-w] [-i]
+  -h : this text.
+  -a : Do not abort on failed test.
+  -v : verbose
+  -V : even more verbose
+  -p : pause at failed test
+  -e : device does preapproval when turned on
+  -u : disable U2F Raw Message tests.
+  -t : disable BLE Transport tests.
+  -i : enable U2F ISO7816-4 encoding tests.
+  -w : Warnings are treated as errors.
+  -l : Show all known FIDO BLE devices and exit.
+  -d : Select specific FIDO BLE device.
+
+
+Compatible hardware:
+
+All testing has been performed with a CSR8510 A10 based dongle.
