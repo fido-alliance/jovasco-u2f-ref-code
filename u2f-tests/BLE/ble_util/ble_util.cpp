@@ -1,6 +1,19 @@
 /*
- *   Copyright (C) 2016, VASCO Data Security Int.
+ *   This file is heavilty based on 
+ *   https://github.com/google/u2f-ref-code/blob/master/u2f-tests/HID/u2f_util.cc
+ *
+ *   All original code:
+ *
  *   Copyright 2014 Google Inc. All rights reserved.
+ *
+ *   Use of this source code is governed by a BSD-style
+ *   license that can be found in the LICENSE file or at
+ *   https://developers.google.com/open-source/licenses/bsd
+ *
+ *   All differences, 
+ *
+ *   Copyright (C) 2016, VASCO Data Security Int.
+ *   Author: Johan.Verrept@vasco.com
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -14,9 +27,6 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- *   This file is based heavily on 
- *   https://github.com/google/u2f-ref-code/blob/master/u2f-tests/HID/u2f_util.c
  */
 
 #include "ble_util.h"
