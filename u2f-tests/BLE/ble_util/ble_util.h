@@ -1,6 +1,6 @@
 /*
  *   Copyright (C) 2016, VASCO Data Security Int.
- *   Author: Johan.Verrept@vasco.com
+ *   Copyright 2014 Google Inc. All rights reserved.
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -14,6 +14,11 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *   This file is heavilty based on 
+ *   https://github.com/google/u2f-ref-code/blob/master/u2f-tests/HID/u2f_util.h
+ *   
+ *   All differences, Author: Johan.Verrept@vasco.com
  */
 
 #include <stdint.h>
