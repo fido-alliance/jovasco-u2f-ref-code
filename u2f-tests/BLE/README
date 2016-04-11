@@ -37,19 +37,22 @@ You can then run the test on a specific device by doing:
 
 Full usage:
 
-Usage: BLETest.exe [ -d <device-identifier>] [-l] [-h] [-a] [-v] [-V] [-p] [-e] [-u] [-t] [-w] [-i]
+Usage: BLETest [-d <device-identifier>] [-l] [-h] [-a] [-v] [-V] [-p] [-e] [-u] [-t] [-w] [-i] [-c] [-x]
   -h : this text.
   -a : Do not abort on failed test.
-  -v : verbose
-  -V : even more verbose
-  -p : pause at failed test
-  -e : device does preapproval when turned on
-  -u : disable U2F Raw Message tests.
-  -t : disable BLE Transport tests.
-  -i : enable U2F ISO7816-4 encoding tests.
+  -v : Verbose
+  -V : Even more verbose
+  -p : Pause at failed test
+  -e : Device does preapproval when turned on
+  -u : Disable U2F Raw Message tests.
+  -t : Disable BLE Transport tests.
+  -i : Enable U2F ISO7816-4 encoding tests.
   -w : Warnings are treated as errors.
+  -x : Disable encrypted connection requirement.
+  -c : Toggle ANSI colors.
   -l : Show all known FIDO BLE devices and exit.
   -d : Select specific FIDO BLE device.
+
 
 
 Compatible hardware:
