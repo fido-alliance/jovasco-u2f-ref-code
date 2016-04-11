@@ -191,7 +191,7 @@ void Usage(char *name)
 	    << "  -h : this text." << std::endl
 	    << "  -a : Do not abort on failed test." << std::endl
 	    << "  -v : Verbose" << std::endl
-	    << "  -V : Rven more verbose" << std::endl
+	    << "  -V : Even more verbose" << std::endl
 	    << "  -p : Pause at failed test" << std::endl
 	    << "  -e : Device does preapproval when turned on" << std::endl
 	    << "  -u : Disable U2F Raw Message tests. " << std::endl
