@@ -82,8 +82,8 @@ VOID BleDeviceWindows::OnBluetoothGattEventCallback(_In_ BTH_LE_GATT_EVENT_TYPE
 	}
 }
 
- BleDeviceWindows::BleDeviceWindows(pBleApi pBleApi, std::string deviceInstanceId, HANDLE deviceHandle, HANDLE serviceHandle, bool encrypt):
-BleDevice(encrypt), mDeviceInstanceId(deviceInstanceId), mDeviceHandle(deviceHandle),	// take ownership
+ BleDeviceWindows::BleDeviceWindows(pBleApi pBleApi, std::string deviceInstanceId, HANDLE deviceHandle, HANDLE serviceHandle, bool encrypt, bool logging):
+BleDevice(encrypt, logging), mDeviceInstanceId(deviceInstanceId), mDeviceHandle(deviceHandle),	// take ownership
     mServiceHandle(serviceHandle)
     // take ownership
 {

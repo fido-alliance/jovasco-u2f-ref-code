@@ -180,8 +180,8 @@ int GetServiceHandle(IN string p_DevInstanceId, OUT HANDLE & p_hService)
 	return BLEAPI_ERROR_NOT_FOUND;
 }
 
- BleApiWindows::BleApiWindows(bool encryption):
-BleApi(encryption)
+ BleApiWindows::BleApiWindows(bool encryption, bool logging):
+BleApi(encryption, logging)
 {
 };
 
@@ -266,7 +266,8 @@ std::vector < BleDevice * >BleApiWindows::findDevices()
 		    (BleDevice *) new BleDeviceWindows(this, deviceInstanceId,
 						       devHandle,
 						       serviceHandle,
-						       mEncryption);
+						       mEncryption,
+						       mLogging);
 		list.push_back(dev);
 		mDeviceList.push_back(dev);
 	}

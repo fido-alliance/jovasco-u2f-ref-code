@@ -23,8 +23,24 @@
 #include <string.h>
 #include "fido_ble.h"
 
- BleDevice::BleDevice(bool encrypt):
-mCommandInProgress(false), mTimeout(0), mEncryption(encrypt)
+static std::string bytes2ascii(const unsigned char *ptr, int len)
+{
+	static const char *convert = "0123456789ABCDEF";
+	std::string r;
+	int i;
+
+	for (i = 0; i < len; i++) {
+		const unsigned char c = ptr[i];
+
+		r += convert[(c >> 4) & 0x0F];
+		r += convert[(c) & 0x0F];
+	}
+
+	return r;
+}
+
+ BleDevice::BleDevice(bool encrypt, bool logging):
+mCommandInProgress(false), mTimeout(0), mEncryption(encrypt), mLogging(logging)
 {
 }
 
@@ -134,6 +150,14 @@ ReturnValue BleDevice::CommandWrite(unsigned char cmd, unsigned char *buffer,
 
 	i = 0;
 	do {
+		// stop writing if we received an error.
+		Lock();
+		if (!mCommandInProgress) {
+			UnLock();
+			break;
+		}
+		UnLock();
+
 		// length to send write this time.
 		l = (controlPointLength - offset);
 		if (l > (bufferLength - i))
@@ -141,6 +165,13 @@ ReturnValue BleDevice::CommandWrite(unsigned char cmd, unsigned char *buffer,
 
 		// fill segment data
 		memcpy(segment + offset, buffer + i, l);
+
+		// logging
+		if (mLogging)
+			std::cout << "   WRITE: " << bytes2ascii(segment,
+								 l +
+								 offset).c_str()
+			    << std::endl;
 
 		// write to ControlPoint
 		retval = ControlPointWrite(segment, l + offset);
@@ -195,6 +226,11 @@ void BleDevice::EventHandler(BleDevice::FIDOEventType type,
 
 		goto leave;
 	}
+
+	if (mLogging)
+		std::cout << "   READ: " << bytes2ascii(buffer,
+							bufferLength).c_str() <<
+		    std::endl;
 
 	unsigned int l;
 	if (mReceived == 0) {

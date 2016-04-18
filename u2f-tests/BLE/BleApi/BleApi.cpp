@@ -26,8 +26,8 @@
 
 #include <guiddef.h>
 
- BleApi::BleApi(bool encryption):
-mEncryption(encryption)
+ BleApi::BleApi(bool encryption, bool logging):
+mEncryption(encryption), mLogging(logging)
 {
 }
 
@@ -48,10 +48,10 @@ std::vector < BleDevice * >BleApi::findDevices()
 	return empty;
 }
 
-BleApi *BleApi::CreateAPI(bool encryption)
+BleApi *BleApi::CreateAPI(bool encryption, bool logging)
 {
 #ifdef PLATFORM_WINDOWS
-	return (pBleApi) new BleApiWindows(encryption);
+	return (pBleApi) new BleApiWindows(encryption, logging);
 #else
 	return NULL;
 #endif

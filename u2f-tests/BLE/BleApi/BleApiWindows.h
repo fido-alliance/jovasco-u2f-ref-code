@@ -26,11 +26,11 @@
 
 typedef class BleApiWindows:BleApi {
  public:
-	BleApiWindows(bool encryption = true);
+	BleApiWindows(bool encryption = true, bool logging = false);
 	~BleApiWindows(void);
 
  public:
 	 virtual std::vector < BleDevice * >findDevices();
 } *pBleApiWindows;
 
-#endif /* _BLEAPI_BLEAPIWINDOWS_H_ */
+#endif				/* _BLEAPI_BLEAPIWINDOWS_H_ */

@@ -37,7 +37,7 @@ typedef class BleDevice {
 				       unsigned int bufferLength);
 
  protected:
-	 BleDevice(bool encrypt = true);
+	 BleDevice(bool encrypt = true, bool logging = false);
 
  public:
 	~BleDevice(void);
@@ -94,6 +94,7 @@ typedef class BleDevice {
  protected:
 	// do we need to do encryption
 	 bool mEncryption;
+	bool mLogging;
 
 } *pBleDevice;
 

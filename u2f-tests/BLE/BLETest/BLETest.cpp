@@ -17,6 +17,7 @@ bool arg_u2f = true;
 bool arg_transport = true;
 bool arg_iso7816 = false;
 bool arg_encryption = true;
+bool arg_tracing = false;
 
 #define REPLY_BUFFER_LENGTH 256
 static unsigned char reply[REPLY_BUFFER_LENGTH];
@@ -101,8 +102,7 @@ ReturnValue BLETransportTests(pBleDevice dev)
 
 ReturnValue U2FISO7816EncodingTests(pBleDevice dev)
 {
-	std::
-	    cout << std::endl << "==== BLE ISO7816-4 Encoding tests ====" <<
+	std::cout << std::endl << "==== BLE ISO7816-4 Encoding tests ====" <<
 	    std::endl;
 	WaitForUserPresence(dev, arg_hasButton);
 
@@ -128,8 +128,8 @@ ReturnValue U2FISO7816EncodingTests(pBleDevice dev)
 
 ReturnValue U2FTests(pBleDevice dev)
 {
-	std::cout << std::
-	    endl << "==== U2F Raw Message tests ====" << std::endl;
+	std::cout << std::endl << "==== U2F Raw Message tests ====" << std::
+	    endl;
 	WaitForUserPresence(dev, arg_hasButton);
 
 	PASS(BleApiTest_GetU2FProtocolVersion(dev));
@@ -201,7 +201,8 @@ void Usage(char *name)
 	    << "  -x : Disable encrypted connection requirement." << std::endl
 	    << "  -c : Toggle ANSI colors." << std::endl
 	    << "  -l : Show all known FIDO BLE devices and exit." << std::endl
-	    << "  -d : Select specific FIDO BLE device." << std::endl;
+	    << "  -d : Select specific FIDO BLE device." << std::endl
+	    << "  -T : turn on BLE level tracing." << std::endl;
 	exit(-1);
 }
 
@@ -260,6 +261,10 @@ int __cdecl main(int argc, char *argv[])
 			// treat warnings as errors
 			arg_ShowDevices = true;
 		}
+		if (!strncmp(argv[count], "-T", 2)) {
+			// treat warnings as errors
+			arg_tracing = true;
+		}
 		if (!strncmp(argv[count], "-d", 2)) {
 			// treat warnings as errors
 			++count;
@@ -282,7 +287,7 @@ int __cdecl main(int argc, char *argv[])
 	}
 
 	try {
-		pBleApi api = BleApi::CreateAPI(arg_encryption);
+		pBleApi api = BleApi::CreateAPI(arg_encryption, arg_tracing);
 
 		/* find U2F Devices */
 		std::vector < pBleDevice > devices = api->findDevices();
@@ -297,8 +302,8 @@ int __cdecl main(int argc, char *argv[])
 
 			std::cout << "All valid FIDO BLE devices:" << std::endl;
 			for (i = devices.begin(); i != devices.end(); i++) {
-				std::cout << "  " << (*i)->
-				    Identifier() << std::endl;
+				std::cout << "  " << (*i)->Identifier() << std::
+				    endl;
 			}
 			exit(0);
 		}

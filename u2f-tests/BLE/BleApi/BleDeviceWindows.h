@@ -42,7 +42,7 @@ class BleDeviceWindows:BleDevice {
  public:
 	BleDeviceWindows(pBleApi pBleApi, std::string deviceInstanceId,
 			 HANDLE deviceHandle, HANDLE serviceHandle,
-			 bool encrypt = true);
+			 bool encrypt = true, bool logging = false);
 	~BleDeviceWindows();
 
 	bool hasPath(std::string path);
@@ -82,4 +82,4 @@ class BleDeviceWindows:BleDevice {
 	BTH_LE_GATT_DESCRIPTOR mDescriptorCCC;
 };
 
-#endif /* _BLEAPI_BLEDEVICEWINDOWS_H_ */
+#endif				/* _BLEAPI_BLEDEVICEWINDOWS_H_ */

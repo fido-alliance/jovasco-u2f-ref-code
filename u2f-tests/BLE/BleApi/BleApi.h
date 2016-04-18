@@ -26,17 +26,18 @@
 
 typedef class BleApi {
  protected:
-	BleApi(bool encryption = true);
+	BleApi(bool encryption = true, bool logging = false);
 	~BleApi(void);
 
  public:
 	 virtual std::vector < pBleDevice > findDevices();
 
-	static BleApi *CreateAPI(bool encryption = true);
+	static BleApi *CreateAPI(bool encryption = true, bool logging = false);
 
  protected:
 	 bool mEncryption;
+	bool mLogging;
 	 std::vector < pBleDevice > mDeviceList;
 } *pBleApi;
 
-#endif /* _BLEAPI_BLEAPI_H_ */
+#endif				/* _BLEAPI_BLEAPI_H_ */

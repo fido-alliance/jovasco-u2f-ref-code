@@ -33,4 +33,4 @@ typedef enum {
 	BLEAPI_ERROR_TIMEOUT,
 } ReturnValue;
 
-#endif /* _BLEAPI_BLEAPIERROR_H_ */
+#endif				/* _BLEAPI_BLEAPIERROR_H_ */
