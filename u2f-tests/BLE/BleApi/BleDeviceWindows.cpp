@@ -38,6 +38,22 @@ DEFINE_GUID(GUID_BLUETOOTHLE_FIDO_CTRLPT_LEN, 0xF1D0FFF3, 0xDEAA, 0xECEE, 0xB4,
 #define HRESULT_RUNTIME_EXCEPTION(x)		hresult_exception(__FILE__, __LINE__, x);
 #define STRING_RUNTIME_EXCEPTION(x)		std::runtime_error( __FILE__ + std::to_string(__LINE__) + x)
 
+static std::string bytes2ascii(const unsigned char *ptr, int len)
+{
+	static const char *convert = "0123456789ABCDEF";
+	std::string r;
+	int i;
+
+	for (i = 0; i < len; i++) {
+		const unsigned char c = ptr[i];
+
+		r += convert[(c >> 4) & 0x0F];
+		r += convert[(c) & 0x0F];
+	}
+
+	return r;
+}
+
 inline std::runtime_error hresult_exception(std::string file, int line,
 					    HRESULT result)
 {
@@ -66,6 +82,7 @@ VOID BleDeviceWindows::OnBluetoothGattEventCallback(_In_ BTH_LE_GATT_EVENT_TYPE
 						    _In_ PVOID
 						    EventOutParameter)
 {
+	Lock();
 	switch (EventType) {
 	case BTH_LE_GATT_EVENT_TYPE::CharacteristicValueChangedEvent:
 		{
@@ -73,13 +90,24 @@ VOID BleDeviceWindows::OnBluetoothGattEventCallback(_In_ BTH_LE_GATT_EVENT_TYPE
 			    (PBLUETOOTH_GATT_VALUE_CHANGED_EVENT)
 			    EventOutParameter;
 
+			if (mLogging)
+				std::
+				    cout << "   READ: " <<
+				    bytes2ascii
+				    (event->CharacteristicValue->Data,
+				     event->CharacteristicValue->DataSize).c_str
+				    ()
+				    << std::endl;
+
 			EventHandler(BleDevice::FIDOEventType::EVENT_FRAGMENT,
 				     event->CharacteristicValue->Data,
 				     event->CharacteristicValue->DataSize);
+
 		}
 	default:
 		break;
 	}
+	UnLock();
 }
 
  BleDeviceWindows::BleDeviceWindows(pBleApi pBleApi, std::string deviceInstanceId, HANDLE deviceHandle, HANDLE serviceHandle, bool encrypt, bool logging):
@@ -407,6 +435,11 @@ ReturnValue BleDeviceWindows::ControlPointWrite(unsigned char *buffer,
 
 	valueBuffer->DataSize = bufferLength;
 	memcpy(&valueBuffer->Data, buffer, bufferLength);
+
+	if (mLogging)
+		std::cout << "   WRITE: " << bytes2ascii(buffer,
+							 bufferLength).c_str()
+		    << std::endl;
 
 	HRESULT hResult = BluetoothGATTSetCharacteristicValue(mServiceHandle,
 							      &mCharacteristicControlPoint,

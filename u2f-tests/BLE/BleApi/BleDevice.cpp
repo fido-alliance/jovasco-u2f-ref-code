@@ -166,13 +166,6 @@ ReturnValue BleDevice::CommandWrite(unsigned char cmd, unsigned char *buffer,
 		// fill segment data
 		memcpy(segment + offset, buffer + i, l);
 
-		// logging
-		if (mLogging)
-			std::cout << "   WRITE: " << bytes2ascii(segment,
-								 l +
-								 offset).c_str()
-			    << std::endl;
-
 		// write to ControlPoint
 		retval = ControlPointWrite(segment, l + offset);
 		if (retval != BLEAPI_ERROR_SUCCESS)
@@ -216,7 +209,6 @@ ReturnValue BleDevice::CommandWrite(unsigned char cmd, unsigned char *buffer,
 void BleDevice::EventHandler(BleDevice::FIDOEventType type,
 			     unsigned char *buffer, unsigned int bufferLength)
 {
-	Lock();
 	if (!mCommandInProgress) {
 		std::vector < pEventHandler >::iterator i;
 
@@ -226,11 +218,6 @@ void BleDevice::EventHandler(BleDevice::FIDOEventType type,
 
 		goto leave;
 	}
-
-	if (mLogging)
-		std::cout << "   READ: " << bytes2ascii(buffer,
-							bufferLength).c_str() <<
-		    std::endl;
 
 	unsigned int l;
 	if (mReceived == 0) {
@@ -313,5 +300,5 @@ void BleDevice::EventHandler(BleDevice::FIDOEventType type,
 	}
 
  leave:
-	UnLock();
+	return;
 }

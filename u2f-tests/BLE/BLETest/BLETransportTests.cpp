@@ -49,6 +49,10 @@ void BleApiTest_TransportEventHandler(BleDevice::FIDOEventType type,
 	if (eventDone)
 		return;
 
+	// ignore keep-alives here.     
+	if (buffer[0] == FIDO_BLE_CMD_KEEPALIVE)
+		return;
+
 	memcpy(fragmentReplyBuffer, buffer, bufferLength);
 	fragmentReplyBufferLength = bufferLength;
 
