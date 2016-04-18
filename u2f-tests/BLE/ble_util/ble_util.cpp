@@ -1,17 +1,4 @@
 /*
- *   This file is heavilty based on 
- *   https://github.com/google/u2f-ref-code/blob/master/u2f-tests/HID/u2f_util.cc
- *
- *   All original code:
- *
- *   Copyright 2014 Google Inc. All rights reserved.
- *
- *   Use of this source code is governed by a BSD-style
- *   license that can be found in the LICENSE file or at
- *   https://developers.google.com/open-source/licenses/bsd
- *
- *   All differences, 
- *
  *   Copyright (C) 2016, VASCO Data Security Int.
  *   Author: Johan.Verrept@vasco.com
  *
@@ -41,47 +28,25 @@ bool arg_Abort = true;		// default
 bool arg_Pause = false;		// default
 bool arg_LethalWarn = false;	// default
 
-std::string b2a(const void *ptr, size_t size)
+std::string bytes2ascii(const char *ptr, int len)
 {
-	const uint8_t *p = reinterpret_cast < const uint8_t * >(ptr);
-	std::string result;
+	static const char *convert = "0123456789ABCDEF";
+	std::string r;
+	int i;
 
-	for (size_t i = 0; i < 2 * size; ++i) {
-		int nib = p[i / 2];
-		if ((i & 1) == 0)
-			nib >>= 4;
-		nib &= 15;
-		result.push_back("0123456789ABCDEF"[nib]);
+	for (i = 0; i < len; i++) {
+		const char c = ptr[i];
+
+		r += convert[(c >> 4) & 0x0F];
+		r += convert[(c) & 0x0F];
 	}
 
-	return result;
+	return r;
 }
 
-std::string b2a(const std::string & s)
+std::string bytes2ascii(const std::string & s)
 {
-	return b2a(s.data(), s.size());
-}
-
-std::string a2b(const std::string & s)
-{
-	std::string result;
-	int v;
-	for (size_t i = 0; i < s.size(); ++i) {
-		if ((i & 1) == 1)
-			v <<= 4;
-		else
-			v = 0;
-		char d = s[i];
-		if (d >= '0' && d <= '9')
-			v += (d - '0');
-		else if (d >= 'A' && d <= 'F')
-			v += (d - 'A' + 10);
-		else if (d >= 'a' && d <= 'f')
-			v += (d - 'a' + 10);
-		if ((i & 1) == 1)
-			result.push_back(v & 255);
-	}
-	return result;
+	return bytes2ascii(s.data(), s.size());
 }
 
 void checkPause()
@@ -101,66 +66,61 @@ void AbortOrNot()
 	std::cerr << "(continuing -a)" << std::endl;
 }
 
-uint16_t b2s(const unsigned char *buffer, uint32_t offset)
+uint16_t bytes2short(const unsigned char *buffer, uint32_t offset)
 {
-	return (uint16_t) (((uint16_t) buffer[offset] << 8) | (uint16_t)
-			   buffer[offset + 1]);
+	return (((uint16_t) (buffer[offset] << 8)) | (uint16_t)
+		buffer[offset + 1]);
 }
 
 bool getCertificate(const U2F_REGISTER_RESP & rsp, std::string * cert)
 {
-	size_t hkLen = rsp.keyHandleLen;
+	int len = rsp.keyHandleLen;
+	int certlen = MAX_KH_SIZE + MAX_CERT_SIZE + MAX_ECDSA_SIG_SIZE - len;
 
-	CHECK_GE(hkLen, 64);
-	CHECK_LT(hkLen, sizeof(rsp.keyHandleCertSig));
+	unsigned char *p = (unsigned char *)&rsp.keyHandleCertSig[len];
 
-	size_t certOff = hkLen;
-	size_t certLen = sizeof(rsp.keyHandleCertSig) - certOff;
-	const uint8_t *p = &rsp.keyHandleCertSig[certOff];
-
-	CHECK_GE(certLen, 4);
+	CHECK_GE(certlen, 4 + 25);	// must be larger than the header we test + the asn sequence for the public key (see below)
 	CHECK_EQ(p[0], 0x30);
 
-	CHECK_GE(p[1], 0x81);
-	CHECK_LE(p[1], 0x82);
-
-	size_t seqLen;
-	size_t headerLen;
-	if (p[1] == 0x81) {
-		seqLen = p[2];
-		headerLen = 3;
-	} else if (p[1] == 0x82) {
-		seqLen = p[2] * 256 + p[3];
-		headerLen = 4;
-	} else {
-		// FAIL
-		AbortOrNot();
+	int seqlen, headerlen;
+	switch (p[1]) {
+	case 0x81:
+		seqlen = p[2];
+		headerlen = 3;
+		break;
+	case 0x82:
+		seqlen = p[2] * 256 + p[3];
+		headerlen = 4;
+		break;
+	default:
+		CHECK_GE(p[1], 0x81);
+		CHECK_LE(p[1], 0x82);
+		return false;
 	}
 
-	CHECK_LE(seqLen, certLen - headerLen);
+	CHECK_LE(seqlen, certlen - headerlen);
 
-	cert->assign(reinterpret_cast < const char *>(p), seqLen + headerLen);
+	cert->assign(reinterpret_cast < const char *>(p), seqlen + headerlen);
 	return true;
 }
 
-bool getSignature(const U2F_REGISTER_RESP & rsp, std::string * sig)
+bool getSignature(const U2F_REGISTER_RESP & rsp, int certsize,
+		  std::string * sig)
 {
-	std::string cert;
-	CHECK_NE(false, getCertificate(rsp, &cert));
+	int sigoffset = rsp.keyHandleLen + certsize;
+	CHECK_LE(sigoffset, MAX_KH_SIZE + MAX_CERT_SIZE + MAX_ECDSA_SIG_SIZE);
 
-	size_t sigOff = rsp.keyHandleLen + cert.size();
-	CHECK_LE(sigOff, sizeof(rsp.keyHandleCertSig));
+	size_t siglength = sizeof(rsp.keyHandleCertSig) - sigoffset;
+	const unsigned char *p = &rsp.keyHandleCertSig[sigoffset];
 
-	size_t sigLen = sizeof(rsp.keyHandleCertSig) - sigOff;
-	const uint8_t *p = &rsp.keyHandleCertSig[sigOff];
+	CHECK_GE(siglength, 2);	// why 2?
+	CHECK_EQ(p[0], 0x30);	// start of signature
 
-	CHECK_GE(sigLen, 2);
-	CHECK_EQ(p[0], 0x30);
+	// extract and check length
+	size_t seqlen = p[1];
+	CHECK_LE(seqlen, siglength - 2);
 
-	size_t seqLen = p[1];
-	CHECK_LE(seqLen, sigLen - 2);
-
-	sig->assign(reinterpret_cast < const char *>(p), seqLen + 2);
+	sig->assign(reinterpret_cast < const char *>(p), seqlen + 2);
 	return true;
 }
 
@@ -169,16 +129,22 @@ bool getSubjectPublicKey(const std::string & cert, std::string * pk)
 	CHECK_GE(cert.size(), P256_POINT_SIZE);
 
 	// Explicitly search for asn1 lead-in sequence of p256-ecdsa public key.
-	const char asn1[] =
-	    "3059301306072A8648CE3D020106082A8648CE3D030107034200";
-	std::string pkStart(a2b(asn1));
+	const unsigned char asn1[] = {
+		0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2A, 0x86,
+		0x48, 0xCE, 0x3D, 0x02, 0x01, 0x06, 0x08, 0x2A,
+		0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07, 0x03,
+		0x42, 0x00
+	};
 
-	size_t off = cert.find(pkStart);
+	// see if this sequence is part of the certificate
+	size_t off = cert.find((const char *)asn1, 0, sizeof(asn1));
 	CHECK_NE(off, std::string::npos);
 
-	off += pkStart.size();
+	// see if the cert has at least the pointsize length left.
+	off += sizeof(asn1);
 	CHECK_LE(off, cert.size() - P256_POINT_SIZE);
 
 	pk->assign(cert, off, P256_POINT_SIZE);
+
 	return true;
 }

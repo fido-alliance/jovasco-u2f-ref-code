@@ -1,17 +1,4 @@
 /*
- *   This file is heavilty based on 
- *   https://github.com/google/u2f-ref-code/blob/master/u2f-tests/HID/u2f_util.h
- *
- *   All original code:
- *
- *   Copyright 2014 Google Inc. All rights reserved.
- *
- *   Use of this source code is governed by a BSD-style
- *   license that can be found in the LICENSE file or at
- *   https://developers.google.com/open-source/licenses/bsd
- *
- *   All differences, 
- *
  *   Copyright (C) 2016, VASCO Data Security Int.
  *   Author: Johan.Verrept@vasco.com
  *
@@ -38,21 +25,10 @@
 #include <iostream>
 
 #include "u2f.h"
-
 #ifdef _MSC_VER
 #include <windows.h>
-#define usleep(x) Sleep((x + 999) / 1000)
 #else
 #include <unistd.h>
-#define max(a,b) \
-           ({ __typeof__ (a) _a = (a); \
-                       __typeof__ (b) _b = (b); \
-                       _a > _b ? _a : _b; })
-
-#define min(a,b) \
-           ({ __typeof__ (a) _a = (a); \
-                       __typeof__ (b) _b = (b); \
-                       _a < _b ? _a : _b; })
 #endif
 
 #define CHECK_INFO __FUNCTION__ << "[" << __LINE__ << "]:"
@@ -67,16 +43,16 @@
 #	define GREENSTART "\x1b[32m"
 #endif
 
-#define CHECK_EQ(a,b) do { if ((a)!=(b)) { std::cerr << REDSTART << "CHECK_EQ fail at " << CHECK_INFO#a << " != "#b << ":" << COLOREND << std::endl; AbortOrNot(); }} while(0)
-#define CHECK_NE(a,b) do { if ((a)==(b)) { std::cerr << REDSTART << "CHECK_NE fail at " << CHECK_INFO#a << " == "#b << ":" << COLOREND << std::endl; AbortOrNot(); }} while(0)
-#define CHECK_GE(a,b) do { if ((a)<(b))  { std::cerr << REDSTART << "CHECK_GE fail at " << CHECK_INFO#a << " < "#b  << ":" << COLOREND << std::endl; AbortOrNot(); }} while(0)
-#define CHECK_GT(a,b) do { if ((a)<=(b)) { std::cerr << REDSTART << "CHECK_GT fail at " << CHECK_INFO#a << " < "#b  << ":" << COLOREND << std::endl; AbortOrNot(); }} while(0)
-#define CHECK_LT(a,b) do { if ((a)>=(b)) { std::cerr << REDSTART << "CHECK_LT fail at " << CHECK_INFO#a << " >= "#b << ":" << COLOREND << std::endl; AbortOrNot(); }} while(0)
-#define CHECK_LE(a,b) do { if ((a)>(b))  { std::cerr << REDSTART << "CHECK_LE fail at " << CHECK_INFO#a << " > "#b  << ":" << COLOREND << std::endl; AbortOrNot(); }} while(0)
+#define CHECK_EQ(a,b) { if ((a)!=(b)) { std::cerr << REDSTART << "CHECK_EQ fail at " << CHECK_INFO#a << " != "#b << ":" << COLOREND << std::endl; AbortOrNot(); }}
+#define CHECK_NE(a,b) { if ((a)==(b)) { std::cerr << REDSTART << "CHECK_NE fail at " << CHECK_INFO#a << " == "#b << ":" << COLOREND << std::endl; AbortOrNot(); }}
+#define CHECK_GE(a,b) { if ((a)<(b))  { std::cerr << REDSTART << "CHECK_GE fail at " << CHECK_INFO#a << " < " #b << ":" << COLOREND << std::endl; AbortOrNot(); }}
+#define CHECK_GT(a,b) { if ((a)<=(b)) { std::cerr << REDSTART << "CHECK_GT fail at " << CHECK_INFO#a << " < " #b << ":" << COLOREND << std::endl; AbortOrNot(); }}
+#define CHECK_LT(a,b) { if ((a)>=(b)) { std::cerr << REDSTART << "CHECK_LT fail at " << CHECK_INFO#a << " >= "#b << ":" << COLOREND << std::endl; AbortOrNot(); }}
+#define CHECK_LE(a,b) { if ((a)>(b))  { std::cerr << REDSTART << "CHECK_LE fail at " << CHECK_INFO#a << " > " #b << ":" << COLOREND << std::endl; AbortOrNot(); }}
 
-#define PASS(x) do { (x); std::cout << GREENSTART << "PASS("#x")" << COLOREND << std::endl; } while(0)
+#define PASS(x) { (x); std::cout << GREENSTART << "PASS("#x")" << COLOREND << std::endl; }
 
-#define WARN_EQ(a,b) do { if ((a)!=(b)) { std::cerr << REDSTART << "WARN_NE fail at " << CHECK_INFO#a << " != "#b << ":" << COLOREND << std::endl; if (arg_LethalWarn) AbortOrNot(); }} while(0)
+#define WARN_EQ(a,b) { if ((a)!=(b)) { std::cerr << REDSTART << "WARN_NE fail at " << CHECK_INFO#a << " != "#b << ":" << COLOREND << std::endl; if (arg_LethalWarn) AbortOrNot(); }}
 
 class U2F_info {
  public:
@@ -99,15 +75,14 @@ extern bool arg_ansi;
 
 #define INFO if (arg_Verbose) U2F_info(__FUNCTION__, __LINE__) << ": "
 
-std::string b2a(const void *ptr, size_t size);
-std::string b2a(const std::string & s);
-std::string a2b(const std::string & s);
+std::string bytes2ascii(const char *ptr, int len);
+std::string bytes2ascii(const std::string & s);
 
-uint16_t b2s(const unsigned char *buffer, uint32_t offset);
+uint16_t bytes2short(const unsigned char *buffer, uint32_t offset);
 
-void checkPause();
 void AbortOrNot();
 
 bool getCertificate(const U2F_REGISTER_RESP & rsp, std::string * cert);
-bool getSignature(const U2F_REGISTER_RESP & rsp, std::string * sig);
+bool getSignature(const U2F_REGISTER_RESP & rsp, int certsize,
+		  std::string * sig);
 bool getSubjectPublicKey(const std::string & cert, std::string * pk);
