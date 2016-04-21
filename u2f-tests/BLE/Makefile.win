@@ -1,5 +1,4 @@
 
-
 all: BLETest.exe
 
 CFLAGS = -nologo -EHsc -W3 -Icore/include -IBleApi -Ible_util -DPLATFORM_WINDOWS -D__OS_WIN
@@ -8,7 +7,6 @@ CFLAGS = -nologo -EHsc -W3 -Icore/include -IBleApi -Ible_util -DPLATFORM_WINDOWS
 CFLAGS = $(CFLAGS) -Gz
 
 LDFLAGS = setupapi.lib ws2_32.lib
-
 
 # Crypto code.
 LIBMINCRYPT=dsa_sig.obj p256.obj p256_ec.obj p256_ecdsa.obj sha256.obj

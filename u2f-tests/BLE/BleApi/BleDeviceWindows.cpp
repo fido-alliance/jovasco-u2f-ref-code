@@ -62,7 +62,11 @@ inline std::runtime_error hresult_exception(std::string file, int line,
 	std::string m;
 	m.append(file);
 	m.append(":");
+#if defined(_MSC_VER) && (_MSC_VER <= 1600 )
+	m.append(std::to_string(std::static_cast < long long >(line)));
+#else
 	m.append(std::to_string(line));
+#endif
 	m.append(" ");
 	m.append((const char *)err.ErrorMessage());
 	return std::runtime_error(m);
@@ -91,8 +95,7 @@ VOID BleDeviceWindows::OnBluetoothGattEventCallback(_In_ BTH_LE_GATT_EVENT_TYPE
 			    EventOutParameter;
 
 			if (mLogging)
-				std::
-				    cout << "   READ: " <<
+				std::cout << "   READ: " <<
 				    bytes2ascii
 				    (event->CharacteristicValue->Data,
 				     event->CharacteristicValue->DataSize).c_str
@@ -335,7 +338,8 @@ BleDevice(encrypt, logging), mDeviceInstanceId(deviceInstanceId), mDeviceHandle(
 	bool cccFound = false;
 	for (i = 0; i < descriptorCount; i++) {
 		if (descriptors[i].DescriptorType !=
-		    BTH_LE_GATT_DESCRIPTOR_TYPE::ClientCharacteristicConfiguration)
+		    BTH_LE_GATT_DESCRIPTOR_TYPE::
+		    ClientCharacteristicConfiguration)
 			continue;
 
 		cccFound = true;
@@ -396,11 +400,11 @@ ReturnValue BleDeviceWindows::RegisterNotifications(pEventHandler eventHandler)
 
 	hResult =
 	    BluetoothGATTRegisterEvent(mServiceHandle,
-				       BTH_LE_GATT_EVENT_TYPE::CharacteristicValueChangedEvent,
-				       &reg,
-				       (PFNBLUETOOTH_GATT_EVENT_CALLBACK)::OnBluetoothGattEventCallback,
-				       this, &regHandle,
-				       BLUETOOTH_GATT_FLAG_NONE);
+				       BTH_LE_GATT_EVENT_TYPE::
+				       CharacteristicValueChangedEvent, &reg,
+				       (PFNBLUETOOTH_GATT_EVENT_CALLBACK)::
+				       OnBluetoothGattEventCallback, this,
+				       &regHandle, BLUETOOTH_GATT_FLAG_NONE);
 	if (hResult != S_OK)
 		throw HRESULT_RUNTIME_EXCEPTION(hResult);;
 

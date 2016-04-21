@@ -31,8 +31,9 @@ using namespace std;
 #include <vector>
 #include <cfgmgr32.h>
 
-#include <BluetoothLEApis.h>
+#include <BthLEDef.h>
 #include <BluetoothAPIs.h>
+#include <BluetoothLEApis.h>
 
 #include <comdef.h>
 
@@ -55,7 +56,11 @@ inline std::runtime_error hresult_exception(std::string file, int line,
 	std::string m;
 	m.append(file);
 	m.append(":");
+#if defined(_MSC_VER) && (_MSC_VER <= 1600 )
+	m.append(std::to_string(std::static_cast < long long >(line)));
+#else
 	m.append(std::to_string(line));
+#endif
 	m.append(" ");
 	m.append((const char *)err.ErrorMessage());
 	return std::runtime_error(m);

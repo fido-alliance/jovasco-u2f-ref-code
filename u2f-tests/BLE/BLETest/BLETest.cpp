@@ -128,8 +128,8 @@ ReturnValue U2FISO7816EncodingTests(pBleDevice dev)
 
 ReturnValue U2FTests(pBleDevice dev)
 {
-	std::cout << std::
-	    endl << "==== U2F Raw Message tests ====" << std::endl;
+	std::cout << std::endl << "==== U2F Raw Message tests ====" << std::
+	    endl;
 	WaitForUserPresence(dev, arg_hasButton);
 
 	PASS(BleApiTest_GetU2FProtocolVersion(dev));
@@ -302,8 +302,8 @@ int __cdecl main(int argc, char *argv[])
 
 			std::cout << "All valid FIDO BLE devices:" << std::endl;
 			for (i = devices.begin(); i != devices.end(); i++) {
-				std::cout << "  " << (*i)->
-				    Identifier() << std::endl;
+				std::cout << "  " << (*i)->Identifier() << std::
+				    endl;
 			}
 			exit(0);
 		}
