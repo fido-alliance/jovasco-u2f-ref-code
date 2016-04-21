@@ -8,7 +8,7 @@ A number of U2F BLE conformance tests:
 
 To build these tests you will need:
 
-	git clone https://android.googlesource.com/platform/system/core
+	git clone https://android.googlesource.com/platform/system/core/+/lollipop-release/
 	Windows Platform SDK 8
 	Visual Studio 2010 or higher.
 
