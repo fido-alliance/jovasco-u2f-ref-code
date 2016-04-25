@@ -4,6 +4,8 @@ all: BLETest.exe
 CFLAGS = -nologo -EHsc -W3 -Icore/include -IBleApi -Ible_util -DPLATFORM_WINDOWS -D__OS_WIN
 
 # Switching to default __stdcall calling convention. works around a bug in the Windows 8.0 Ble headers.
+#  I have been told this causes problems with 
+#  Windows Platform SDK 10, so please try without on that  (unsupported) platform.
 CFLAGS = $(CFLAGS) -Gz
 
 LDFLAGS = setupapi.lib ws2_32.lib

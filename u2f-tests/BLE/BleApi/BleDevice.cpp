@@ -219,7 +219,7 @@ void BleDevice::EventHandler(BleDevice::FIDOEventType type,
 		goto leave;
 	}
 
-	unsigned int l;
+	unsigned int l = 0;
 	if (mReceived == 0) {
 		//
 		//   New transfer

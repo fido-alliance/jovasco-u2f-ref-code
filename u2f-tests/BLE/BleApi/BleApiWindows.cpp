@@ -57,7 +57,7 @@ inline std::runtime_error hresult_exception(std::string file, int line,
 	m.append(file);
 	m.append(":");
 #if defined(_MSC_VER) && (_MSC_VER <= 1600 )
-	m.append(std::to_string(std::static_cast < long long >(line)));
+	m.append(std::to_string(static_cast < long long >(line)));
 #else
 	m.append(std::to_string(line));
 #endif

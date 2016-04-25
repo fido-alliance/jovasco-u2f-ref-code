@@ -214,14 +214,21 @@ ReturnValue BleApiTest_TransportNotCont(pBleDevice dev)
 {
 	ReturnValue retval;
 
-	unsigned int cpl;
-	unsigned char request[512] = { FIDO_BLE_CMD_MSG, 0x00, 0x20, };
+	unsigned int cpl, l;
+	unsigned char request[8192] = { FIDO_BLE_CMD_MSG, 0x00, 0x20, };
 
 	// get control point length
 	retval = dev->ControlPointLengthRead(&cpl);
 	CHECK_EQ(retval, BLEAPI_ERROR_SUCCESS);
 
 	eventDone = false;
+
+	CHECK_LE(cpl, 8192);
+
+	// write needs to be longer than cpl
+	l = cpl + 1;
+	request[1] = (l >> 8) & 0xFF;
+	request[2] = (l) & 0xFF;
 
 	// send first INIT frame
 	retval = dev->ControlPointWrite(request, cpl);
@@ -255,13 +262,15 @@ ReturnValue BleApiTest_TransportBadSequence(pBleDevice dev)
 	ReturnValue retval;
 
 	unsigned int cpl;
-	unsigned char request[1024] = { FIDO_BLE_CMD_MSG, };
+	unsigned char request[8192 * 2] = { FIDO_BLE_CMD_MSG, };
 
 	// get control point length
 	retval = dev->ControlPointLengthRead(&cpl);
 	CHECK_EQ(retval, BLEAPI_ERROR_SUCCESS);
 
 	eventDone = false;
+
+	CHECK_LE(cpl, 8192);
 
 	// build correct request
 	request[0] = FIDO_BLE_CMD_MSG;

@@ -63,7 +63,7 @@ inline std::runtime_error hresult_exception(std::string file, int line,
 	m.append(file);
 	m.append(":");
 #if defined(_MSC_VER) && (_MSC_VER <= 1600 )
-	m.append(std::to_string(std::static_cast < long long >(line)));
+	m.append(std::to_string(static_cast < long long >(line)));
 #else
 	m.append(std::to_string(line));
 #endif
@@ -115,7 +115,7 @@ VOID BleDeviceWindows::OnBluetoothGattEventCallback(_In_ BTH_LE_GATT_EVENT_TYPE
 
  BleDeviceWindows::BleDeviceWindows(pBleApi pBleApi, std::string deviceInstanceId, HANDLE deviceHandle, HANDLE serviceHandle, bool encrypt, bool logging):
 BleDevice(encrypt, logging), mDeviceInstanceId(deviceInstanceId), mDeviceHandle(deviceHandle),	// take ownership
-    mServiceHandle(serviceHandle)
+    mServiceHandle(serviceHandle), mEventHandleValid(false)
     // take ownership
 {
 	int i;
@@ -362,6 +362,9 @@ BleDevice(encrypt, logging), mDeviceInstanceId(deviceInstanceId), mDeviceHandle(
 
 BleDeviceWindows::~BleDeviceWindows()
 {
+	if (mEventHandleValid)
+		BluetoothGATTUnregisterEvent(mEventHandle, 0);
+
 	CloseHandle(mDeviceHandle);
 	CloseHandle(mServiceHandle);
 }
@@ -392,21 +395,27 @@ ReturnValue BleDeviceWindows::RegisterNotifications(pEventHandler eventHandler)
 	if (retval != BLEAPI_ERROR_SUCCESS)
 		return retval;
 
-	HANDLE regHandle;
-	BLUETOOTH_GATT_VALUE_CHANGED_EVENT_REGISTRATION reg;
+	// only register with windows once, even if this function is called multiple times
+	if (!mEventHandleValid) {
+		BLUETOOTH_GATT_VALUE_CHANGED_EVENT_REGISTRATION reg;
 
-	reg.NumCharacteristics = 1;
-	reg.Characteristics[0] = mCharacteristicStatus;
+		reg.NumCharacteristics = 1;
+		reg.Characteristics[0] = mCharacteristicStatus;
 
-	hResult =
-	    BluetoothGATTRegisterEvent(mServiceHandle,
-				       BTH_LE_GATT_EVENT_TYPE::
-				       CharacteristicValueChangedEvent, &reg,
-				       (PFNBLUETOOTH_GATT_EVENT_CALLBACK)::
-				       OnBluetoothGattEventCallback, this,
-				       &regHandle, BLUETOOTH_GATT_FLAG_NONE);
-	if (hResult != S_OK)
-		throw HRESULT_RUNTIME_EXCEPTION(hResult);;
+		hResult =
+		    BluetoothGATTRegisterEvent(mServiceHandle,
+					       BTH_LE_GATT_EVENT_TYPE::
+					       CharacteristicValueChangedEvent,
+					       &reg,
+					       (PFNBLUETOOTH_GATT_EVENT_CALLBACK)::
+					       OnBluetoothGattEventCallback,
+					       this, &mEventHandle,
+					       BLUETOOTH_GATT_FLAG_NONE);
+		if (hResult != S_OK)
+			throw HRESULT_RUNTIME_EXCEPTION(hResult);;
+
+		mEventHandleValid = true;
+	}
 
 	value.DescriptorUuid = mDescriptorCCC.DescriptorUuid;
 	value.DescriptorType = mDescriptorCCC.DescriptorType;

@@ -96,6 +96,9 @@ ReturnValue BleApiTest_BadCLA(pBleDevice dev)
 	unsigned char reply[256];
 	unsigned int replyLength = sizeof(reply);
 	unsigned char replyCmd;
+
+	request[0] = 0x01 + (rand() % 0xFF);
+
 	retval =
 	    dev->CommandWrite(FIDO_BLE_CMD_MSG, request, 7, &replyCmd, reply,
 			      &replyLength);
@@ -104,7 +107,7 @@ ReturnValue BleApiTest_BadCLA(pBleDevice dev)
 
 	/* check reply */
 	CHECK_EQ(replyLength, 2);
-	CHECK_EQ(FIDO_RESP_CLA_NOT_SUPPORTED, bytes2short(reply, 0));
+	CHECK_NE(FIDO_RESP_SUCCESS, bytes2short(reply, 0));
 
 	return BLEAPI_ERROR_SUCCESS;
 }

@@ -70,7 +70,9 @@ class BleDeviceWindows:BleDevice {
 
  protected:
 	 std::string mDeviceInstanceId;
+	bool mEventHandleValid;
 	HANDLE mDeviceHandle;
+	HANDLE mEventHandle;
 	HANDLE mServiceHandle;
 	HANDLE mMutex;
 	BTH_LE_GATT_SERVICE mService;
