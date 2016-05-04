@@ -1,4 +1,7 @@
 
+ARCHIVENAME=BLECertTool
+7ZIP=C:\Program Files\7-Zip\7z.exe
+
 all: BLETest.exe
 
 CFLAGS = -nologo -EHsc -W3 -Icore/include -IBleApi -Ible_util -DPLATFORM_WINDOWS -D__OS_WIN
@@ -67,3 +70,17 @@ BLETest.exe: BLETest/BLETest.cpp ble_util.obj $(BLEAPI) $(BLETEST) $(LIBMINCRYPT
 
 clean:
 	del *.exe *.obj
+
+dist: BLECertTool.zip
+
+BLECertTool.zip: BLETest.exe
+	-rmdir /q /s $(ARCHIVENAME)
+	mkdir $(ARCHIVENAME)
+	xcopy /y BLETest.exe $(ARCHIVENAME)
+	move  /y $(ARCHIVENAME)\BLETest.exe $(ARCHIVENAME)\BLETest.ex_
+	xcopy /y LICENSE $(ARCHIVENAME)
+	move $(ARCHIVENAME)\LICENSE $(ARCHIVENAME)\LICENSE.BLETest
+	xcopy /y core\libmincrypt\NOTICE $(ARCHIVENAME)
+	move $(ARCHIVENAME)\NOTICE $(ARCHIVENAME)\LICENSE.libmincrypt
+	xcopy /y README $(ARCHIVENAME)
+	-"$(7ZIP)" a -r -mx9 -tzip $(ARCHIVENAME).zip $(ARCHIVENAME)

@@ -9,11 +9,10 @@ A number of U2F BLE conformance tests:
 To build these tests you will need:
 
 	git clone https://android.googlesource.com/platform/system/core/+/lollipop-release/
-	Windows Platform SDK 8
-	Visual Studio 2010 or higher.
 
-Supported platforms:
-	Windows 8
+Supported platforms (tested):
+	Windows 8 + Windows Platform SDK 8 + VS2012
+	Windows 10 + Windows Platofrm SDK 10 + VS2015
 
 
 Building for Windows:
@@ -21,7 +20,9 @@ Building for Windows:
 
 
 IMPORTANT:
-	Windows does NOT support resolvable private addresses.
+	Windows 8.0 does NOT support resolvable private addresses.
+	Windows 8.0 does NOT support PIN based pairing. Windows 8.1 and
+		above do.
 
 
 Usage
