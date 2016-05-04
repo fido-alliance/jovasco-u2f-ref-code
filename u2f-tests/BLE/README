@@ -20,7 +20,8 @@ Building for Windows:
 
 
 IMPORTANT:
-	Windows 8.0 does NOT support resolvable private addresses.
+	Windows 8.0 does NOT support resolvable private addresses. 
+		Higher version have not been tested.
 	Windows 8.0 does NOT support PIN based pairing. Windows 8.1 and
 		above do.
 
