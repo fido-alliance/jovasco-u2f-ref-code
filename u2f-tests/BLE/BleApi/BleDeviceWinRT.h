@@ -59,6 +59,7 @@ protected:
   HANDLE mMutex;
   bool mNotificationsRegistered;
   Windows::Foundation::EventRegistrationToken mRegistrationToken;
+  ref class BleDeviceEventhandlerWrapper  ^mEHWrapper;
 
   std::vector<pEventHandler>  mNotificationHandlers;
   Windows::Devices::Bluetooth::BluetoothLEDevice ^mDevice;

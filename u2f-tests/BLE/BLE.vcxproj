@@ -55,6 +55,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{0F936F76-19DD-4263-9E6E-6F966AC1E0CF}</ProjectGuid>
     <Keyword>MakeFileProj</Keyword>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -68,12 +69,12 @@
     <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>Makefile</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>Makefile</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
@@ -108,6 +109,22 @@
     <NMakeCleanCommandLine>nmake -f Makefile.win clean</NMakeCleanCommandLine>
     <NMakePreprocessorDefinitions>PLATFORM_WINDOWS;WIN32;NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
     <NMakeIncludeSearchPath>core/include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <NMakeBuildCommandLine>nmake -f Makefile.win _DEBUG=1</NMakeBuildCommandLine>
+    <NMakeCleanCommandLine>nmake -f Makefile.win clean</NMakeCleanCommandLine>
+    <NMakeOutput>$(ProjectDir)\BLECertificationTool.exe</NMakeOutput>
+    <NMakePreprocessorDefinitions>PLATFORM_WINDOWS; FEATURE_WINRT;_DEBUG</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>core/include/;BleApi;BLETest;ble_util</NMakeIncludeSearchPath>
+    <AdditionalOptions>-ZW -Gm- -AI"C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/vcpackages" -AI"C:/Program Files (x86)/Windows Kits/10/References/"  -AI"C:/Program Files (x86)/Windows Kits/10/UnionMetaData/"</AdditionalOptions>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <NMakeBuildCommandLine>nmake -f Makefile.win</NMakeBuildCommandLine>
+    <NMakeCleanCommandLine>nmake -f Makefile.win clean</NMakeCleanCommandLine>
+    <NMakeOutput>$(ProjectDir)\BLECertificationTool.exe</NMakeOutput>
+    <NMakePreprocessorDefinitions>PLATFORM_WINDOWS; FEATURE_WINRT;</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>core/include/;BleApi;BLETest;ble_util</NMakeIncludeSearchPath>
+    <AdditionalOptions>-ZW -Gm- -AI"C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/vcpackages" -AI"C:/Program Files (x86)/Windows Kits/10/References/"  -AI"C:/Program Files (x86)/Windows Kits/10/UnionMetaData/"</AdditionalOptions>
   </PropertyGroup>
   <ItemDefinitionGroup>
   </ItemDefinitionGroup>

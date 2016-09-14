@@ -245,3 +245,5 @@ ModelManifest.xml
 .fake/
 /u2f-tests/BLE/core/
 /u2f-tests/BLE/vc140.idb
+/u2f-tests/BLE/bledevicewinrt.obj.enc
+/u2f-tests/BLE/bleapiwinrt.obj.enc

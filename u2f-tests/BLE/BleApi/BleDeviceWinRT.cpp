@@ -16,8 +16,13 @@
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <BleDeviceWinRT.h>
+#include <windows.h>
 #include <ppltasks.h>
+#include <comdef.h>
+#include <iostream>
+#include <stdexcept>
+
+#include <BleDeviceWinRT.h>
 
 using namespace Platform;
 using namespace Concurrency;
@@ -27,10 +32,34 @@ using namespace Windows::Devices::Enumeration;
 using namespace Windows::Devices::Bluetooth;
 using namespace Windows::Devices::Bluetooth::GenericAttributeProfile;
 using namespace Windows::Storage::Streams;
+using namespace Windows::Security::Cryptography;
 
+inline std::runtime_error hresult_exception(std::string file, int line, HRESULT result)
+{
+  _com_error err(result, NULL, false);
+
+  std::string m;
+  m.append(file);
+  m.append(":");
+#if defined(_MSC_VER) && (_MSC_VER <= 1600 )
+  m.append(std::to_string(static_cast < long long >(line)));
+#else
+  m.append(std::to_string(line));
+#endif
+  m.append(" ");
+  m.append((const char *)err.ErrorMessage());
+  return std::runtime_error(m);
+}
+#define HRESULT_RUNTIME_EXCEPTION(x)		hresult_exception(__FILE__, __LINE__, x);
 #define STRING_RUNTIME_EXCEPTION(x)		std::runtime_error( __FILE__ + std::to_string(__LINE__) + x)
 
-#define CHECK_SERVICE(maDevice, maService)  try { if (maDevice->GetGattService(GattServiceUuids::maService) == nullptr) throw; } catch(...) { STRING_RUNTIME_EXCEPTION("Device does not support " #maService); }
+#define CHECK_SERVICE(maDevice, maService)  try { if (maDevice->GetGattService(GattServiceUuids::maService) == nullptr) throw; } \
+      catch (Platform::Exception^ comException) \
+            { HRESULT_RUNTIME_EXCEPTION( comException->HResult ); } \
+      catch (const std::exception& e) \
+            { STRING_RUNTIME_EXCEPTION( e.what() ); } \
+      catch (...) \
+            { STRING_RUNTIME_EXCEPTION( "Device does not support " #maService ); } 
 
 #define CHECK_CHARACTERISTIC_PROPERTY_SET(c, p)  if ((c->CharacteristicProperties & GattCharacteristicProperties::p) != GattCharacteristicProperties::p) throw STRING_RUNTIME_EXCEPTION(#c " does not support " #p);
 
@@ -41,17 +70,32 @@ static const Guid FIDO_CHARACTERISTIC_STATUS_GUID(0xF1D0FFF2, 0xDEAA, 0xECEE, 0x
 static const Guid FIDO_CHARACTERISTIC_VERSION_GUID(0x00002A28, 0x0000, 0x1000, 0x80, 0x00, 0x00,0x80,0x5F, 0x9B, 0x34, 0xFB);
 static const Guid FIDO_CHARACTERISTIC_VERSIONBITFIELD_GUID(0xF1D0FFF4, 0xDEAA, 0xECEE, 0xB4, 0x2F, 0xC9, 0xBA, 0x7E, 0xD6, 0x23, 0xB);
 
+static std::string bytes2ascii(const unsigned char *ptr, int len)
+{
+  static const char *convert = "0123456789ABCDEF";
+  std::string r;
+  int i;
+
+  for (i = 0; i < len; i++) {
+    const unsigned char c = ptr[i];
+
+    r += convert[(c >> 4) & 0x0F];
+    r += convert[(c) & 0x0F];
+  }
+
+  return r;
+}
+
+
 //
 //   Private utility functions to convert data between C++ and CX
 //
 
 IBuffer ^ConvertToIBuffer(unsigned char * buffer, unsigned int bufferLength)
 {
-  auto dataWriter = ref new DataWriter();
-  auto a = ref new Array<unsigned char>(buffer, bufferLength);
-  dataWriter->WriteBytes(a);
-  auto b = dataWriter->DetachBuffer();
-  return b;
+  ArrayReference<unsigned char> a(buffer, bufferLength);
+
+  return CryptographicBuffer::CreateFromByteArray(a);
 }
 
 ReturnValue ConvertFromIBuffer(IBuffer ^incoming, unsigned char *buffer, unsigned int &bufferLength)
@@ -59,9 +103,8 @@ ReturnValue ConvertFromIBuffer(IBuffer ^incoming, unsigned char *buffer, unsigne
   if (bufferLength < incoming->Length)
     return ReturnValue::BLEAPI_ERROR_BUFFER_TOO_SMALL;
 
-  auto dataReader = DataReader::FromBuffer(incoming);
-  auto a = ref new Array<unsigned char>(bufferLength);
-  dataReader->ReadBytes(a);
+  Array<unsigned char> ^a;
+  CryptographicBuffer::CopyToByteArray(incoming, &a);
 
   memcpy(buffer, a->Data, a->Length);
   bufferLength = a->Length;
@@ -95,8 +138,9 @@ BleDeviceWinRT::BleDeviceWinRT(pBleApi pBleApi, std::string deviceInstanceId, Wi
   : BleDevice(encrypt, logging)
   , mDevice(device)
   , mDeviceInstanceId(deviceInstanceId)
+  , mNotificationsRegistered(false)
 {
-  CHECK_SERVICE(mDevice, DeviceInformation);
+  //CHECK_SERVICE(mDevice, DeviceInformation);
 
 
   mService = mDevice->GetGattService(FIDO_SERVICE_GUID);
@@ -173,10 +217,21 @@ ReturnValue BleDeviceWinRT::ControlPointWrite(unsigned char * buffer, unsigned i
 {
   IBuffer ^b = ConvertToIBuffer(buffer, bufferLength);
 
-  // write characteristic
-  GattCommunicationStatus status = create_task(mCharacteristicControlPoint->WriteValueAsync(b, GattWriteOption::WriteWithoutResponse)).get();
-  if (status != GattCommunicationStatus::Success)
-    return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+  if (mLogging)
+    std::cout << "   WRITE: " << bytes2ascii(buffer,
+      bufferLength).c_str()
+    << std::endl;
+
+  try {
+    // write characteristic
+    GattCommunicationStatus status = create_task(mCharacteristicControlPoint->WriteValueAsync(b, GattWriteOption::WriteWithoutResponse)).get();
+    if (status != GattCommunicationStatus::Success)
+      return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+  }
+  catch (std::exception &e)
+  {
+    STRING_RUNTIME_EXCEPTION(e.what());
+  }
 
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -187,16 +242,21 @@ ReturnValue BleDeviceWinRT::ControlPointLengthRead(unsigned int * length)
   unsigned char buffer[512];
   unsigned int bufferLength = sizeof (buffer);
 
-  // read characteristic
-  GattReadResult ^result = create_task(mCharacteristicControlPoint->ReadValueAsync()).get();
-  if (result->Status != GattCommunicationStatus::Success)
-    return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+  try {
+    // read characteristic
+    GattReadResult ^result = create_task(mCharacteristicControlPointLength->ReadValueAsync()).get();
+    if (!result || (result->Status != GattCommunicationStatus::Success))
+      return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
 
-  // convert to C++ data.
-  retval = ConvertFromIBuffer(result->Value, buffer, bufferLength);
-  if (!retval)
-    return retval;
-
+    // convert to C++ data.
+    retval = ConvertFromIBuffer(result->Value, buffer, bufferLength);
+    if (retval)
+      return retval;
+  }
+  catch (std::exception &e)
+  {
+    STRING_RUNTIME_EXCEPTION(e.what());
+  }
   // calculate length
   *length = 0;
   for (unsigned int i = 0; i < bufferLength; i++)
@@ -223,7 +283,7 @@ ReturnValue BleDeviceWinRT::U2FVersionRead(unsigned char * buffer, unsigned int 
 
   // convert to C++ data.
   retval = ConvertFromIBuffer(result->Value, buffer, *bufferLength);
-  if (!retval)
+  if (retval)
     return retval;
 
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
@@ -231,17 +291,31 @@ ReturnValue BleDeviceWinRT::U2FVersionRead(unsigned char * buffer, unsigned int 
 
 ReturnValue BleDeviceWinRT::RegisterNotifications(pEventHandler eventHandler)
 {
+  ReturnValue retval = BleDevice::RegisterNotifications(eventHandler);
+  if (retval != BLEAPI_ERROR_SUCCESS)
+    return retval;
+
   if (!mNotificationsRegistered) {
-    auto wrapper = ref new BleDeviceEventhandlerWrapper(this);
+    mEHWrapper = ref new BleDeviceEventhandlerWrapper(this);
     auto eh = ref new TypedEventHandler<GattCharacteristic^, GattValueChangedEventArgs^>(
-      wrapper, &BleDeviceEventhandlerWrapper::OnNotification
+      mEHWrapper, &BleDeviceEventhandlerWrapper::OnNotification
       );
 
     mRegistrationToken = mCharacteristicStatus->ValueChanged += eh;
     mNotificationsRegistered = true;
   }
 
-  mNotificationHandlers.push_back(eventHandler);
+  // check if notifications are already enabled.
+  GattReadClientCharacteristicConfigurationDescriptorResult ^result = create_task(mCharacteristicStatus->ReadClientCharacteristicConfigurationDescriptorAsync()).get();
+  if (result && (result->Status != GattCommunicationStatus::Success))
+    return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+
+  // if not, enable them.
+  if (result->ClientCharacteristicConfigurationDescriptor != GattClientCharacteristicConfigurationDescriptorValue::Notify) {
+    GattCommunicationStatus status = create_task(mCharacteristicStatus->WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue::Notify)).get();
+    if (status != GattCommunicationStatus::Success)
+      return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+  }
 
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -275,5 +349,21 @@ void BleDeviceWinRT::UnLock()
 
 void BleDeviceWinRT::OnNotification(GattCharacteristic^ sender, GattValueChangedEventArgs^ args)
 {
+  
+  if (sender != mCharacteristicStatus)
+    throw STRING_RUNTIME_EXCEPTION("Received event from unknown characteristic!");
 
+  Array<unsigned char> ^a;
+  CryptographicBuffer::CopyToByteArray(args->CharacteristicValue, &a);
+
+  if (mLogging)
+    std::cout << "   READ: " <<
+    bytes2ascii
+    (a->Data,
+      a->Length).c_str
+      ()
+    << std::endl;
+
+  // pass event to event handlers.
+  EventHandler(BleDevice::EVENT_FRAGMENT, a->Data, a->Length);
 }

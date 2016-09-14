@@ -17,6 +17,7 @@
  */
 
 #include <windows.h>
+#include <comdef.h>
 
 #include <iostream>
 #include <stdexcept>
@@ -25,7 +26,6 @@
 #include "BleDeviceWindows.h"
 #include "BleApiError.h"
 
-#include <comdef.h>
 
 DEFINE_GUID(GUID_BLUETOOTHLE_FIDO_CONTROLPOINT, 0xF1D0FFF1, 0xDEAA, 0xECEE,
 	    0xB4, 0x2F, 0xC9, 0xBA, 0x7E, 0xD6, 0x23, 0xBB);

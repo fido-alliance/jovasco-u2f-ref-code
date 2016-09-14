@@ -28,29 +28,34 @@ using namespace Windows::Devices::Enumeration;
 using namespace Windows::Devices::Bluetooth;
 using namespace Windows::Devices::Bluetooth::GenericAttributeProfile;
 
+static const Guid FIDO_SERVICE_GUID(0x0000FFFD, 0x0000, 0x1000, 0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB);
+
 BleApiWinRT::BleApiWinRT(bool encryption, bool logging)
   : BleApi(encryption, logging)
 {
+  RoInitialize(RO_INIT_TYPE::RO_INIT_MULTITHREADED);
 }
 
 BleApiWinRT::~BleApiWinRT(void)
 {
+  RoUninitialize();
 }
 
 std::vector<BleDevice*> BleApiWinRT::findDevices()
 {
-  const Guid FIDO_SERVICE_GUID(0x0000FFFD, 0x0000, 0x1000, 0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB);
   std::vector < BleDevice * >list;
   using convert_type = std::codecvt_utf8<wchar_t>;
   std::wstring_convert<convert_type, wchar_t> converter;
 
   try {
-    DeviceInformationCollection ^devices = create_task(DeviceInformation::FindAllAsync(GattDeviceService::GetDeviceSelectorFromUuid(FIDO_SERVICE_GUID))).get();
+    String ^deviceSelector = GattDeviceService::GetDeviceSelectorFromUuid(FIDO_SERVICE_GUID);
+    //String ^deviceSelector = BluetoothLEDevice::GetDeviceSelector();
+    DeviceInformationCollection ^devices = create_task(DeviceInformation::FindAllAsync(deviceSelector)).get();
 
-    for (unsigned int i; i < devices->Size; i++) {
+    for (unsigned int i = 0; i < devices->Size; i++) {
       DeviceInformation ^devInfo = devices->GetAt(i);
       BluetoothLEDevice ^dev = create_task(BluetoothLEDevice::FromIdAsync(devInfo->Id)).get();
-      std::string id(converter.to_bytes(devInfo->Id->Data()), devInfo->Id->Length());
+      std::string id = converter.to_bytes(devInfo->Id->Data());
 
       // find the path in the known devices.
       unsigned int j;

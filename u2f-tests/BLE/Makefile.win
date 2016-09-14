@@ -89,13 +89,13 @@ BleDevice.obj: BleApi/BleDevice.cpp $(BLEAPI_HEADER)
 BleApiWindows.obj: BleApi/BleApiWindows.cpp $(BLEAPI_HEADER)
 	$(CXX) -c $(CFLAGS) BleApi/BleApiWindows.cpp -Fo$@
 
-BleDeviceWindows.obj: BleApi/BleDeviceWindows.h $(BLEAPI_HEADER)
+BleDeviceWindows.obj: BleApi/BleDeviceWindows.cpp $(BLEAPI_HEADER)
 	$(CXX) -c $(CFLAGS) BleApi/BleDeviceWindows.cpp -Fo$@
 
 BleApiWinRT.obj: BleApi/BleApiWinRT.cpp $(BLEAPI_HEADER)
 	$(CXX) -c $(CFLAGS) $(CFLAGS_WINRT) BleApi/BleApiWinRT.cpp -Fo$@
 
-BleDeviceWinRT.obj: BleApi/BleDeviceWinRT.h $(BLEAPI_HEADER)
+BleDeviceWinRT.obj: BleApi/BleDeviceWinRT.cpp $(BLEAPI_HEADER)
 	$(CXX) -c $(CFLAGS) $(CFLAGS_WINRT) BleApi/BleDeviceWinRT.cpp -Fo$@
 
 #
