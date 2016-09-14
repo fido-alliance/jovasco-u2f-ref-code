@@ -96,8 +96,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <NMakeBuildCommandLine>nmake -f Makefile.win</NMakeBuildCommandLine>
-    <NMakeOutput>BLE.exe</NMakeOutput>
+    <NMakeBuildCommandLine>nmake -f Makefile.win _DEBUG=1</NMakeBuildCommandLine>
+    <NMakeOutput>BLECertificationTool.exe</NMakeOutput>
     <NMakeCleanCommandLine>nmake -f Makefile.win clean</NMakeCleanCommandLine>
     <NMakePreprocessorDefinitions>PLATFORM_WINDOWS;WIN32;_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
     <NMakeIncludeSearchPath>core/include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>

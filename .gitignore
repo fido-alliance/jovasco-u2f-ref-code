@@ -244,3 +244,4 @@ ModelManifest.xml
 # FAKE - F# Make
 .fake/
 /u2f-tests/BLE/core/
+/u2f-tests/BLE/vc140.idb
