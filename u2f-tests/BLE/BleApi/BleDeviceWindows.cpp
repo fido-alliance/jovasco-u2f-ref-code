@@ -365,6 +365,7 @@ BleDeviceWindows::~BleDeviceWindows()
 	if (mEventHandleValid)
 		BluetoothGATTUnregisterEvent(mEventHandle, 0);
 
+  CloseHandle(mMutex);
 	CloseHandle(mDeviceHandle);
 	CloseHandle(mServiceHandle);
 }

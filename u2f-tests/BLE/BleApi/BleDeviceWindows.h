@@ -38,7 +38,7 @@
 #include "BleDevice.h"
 #include "BleApiError.h"
 
-class BleDeviceWindows:BleDevice {
+class BleDeviceWindows : public BleDevice {
  public:
 	BleDeviceWindows(pBleApi pBleApi, std::string deviceInstanceId,
 			 HANDLE deviceHandle, HANDLE serviceHandle,
@@ -69,7 +69,7 @@ class BleDeviceWindows:BleDevice {
 	virtual void UnLock();
 
  protected:
-	 std::string mDeviceInstanceId;
+	std::string mDeviceInstanceId;
 	bool mEventHandleValid;
 	HANDLE mDeviceHandle;
 	HANDLE mEventHandle;

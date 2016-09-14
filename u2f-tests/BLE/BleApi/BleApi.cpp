@@ -19,7 +19,11 @@
 #include "BleApi.h"
 
 #ifdef PLATFORM_WINDOWS
+#ifdef FEATURE_WINRT
+#include "BleApiWinRT.h"
+#else
 #include "BleApiWindows.h"
+#endif
 #else
 #error "Please define a platform."
 #endif
@@ -51,7 +55,11 @@ std::vector < BleDevice * >BleApi::findDevices()
 BleApi *BleApi::CreateAPI(bool encryption, bool logging)
 {
 #ifdef PLATFORM_WINDOWS
+#ifdef FEATURE_WINRT
+  return (pBleApi) new BleApiWinRT(encryption, logging);
+#else
 	return (pBleApi) new BleApiWindows(encryption, logging);
+#endif
 #else
 	return NULL;
 #endif

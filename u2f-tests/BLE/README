@@ -8,7 +8,9 @@ A number of U2F BLE conformance tests:
 
 To build these tests you will need:
 
-	git clone https://android.googlesource.com/platform/system/core/+/lollipop-release/
+	git clone -b lollipop-release https://android.googlesource.com/platform/system/core/
+
+	If you have git support included in VS2015, this will be done automatically.
 
 Supported platforms (tested):
 	Windows 8 + Windows Platform SDK 8 + VS2012
@@ -56,8 +58,3 @@ Usage: BLETest [-d <device-identifier>] [-l] [-h] [-a] [-v] [-V] [-p] [-e] [-u] 
   -l : Show all known FIDO BLE devices and exit.
   -d : Select specific FIDO BLE device.
 
-
-
-Compatible hardware:
-
-All testing has been performed with a CSR8510 A10 based dongle.

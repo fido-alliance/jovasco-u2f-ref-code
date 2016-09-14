@@ -1,0 +1,117 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="BleApi\BleApi.cpp" />
+    <ClCompile Include="BleApi\BleApiWindows.cpp" />
+    <ClCompile Include="BleApi\BleApiWinRT.cpp" />
+    <ClCompile Include="BleApi\BleDevice.cpp" />
+    <ClCompile Include="BleApi\BleDeviceWindows.cpp" />
+    <ClCompile Include="BleApi\BleDeviceWinRT.cpp" />
+    <ClCompile Include="BLETest\BLETest.cpp" />
+    <ClCompile Include="BLETest\BLETransportTests.cpp" />
+    <ClCompile Include="BLETest\U2FTests.cpp" />
+    <ClCompile Include="ble_util\ble_util.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="BleApi\BleApi.h" />
+    <ClInclude Include="BleApi\BleApiError.h" />
+    <ClInclude Include="BleApi\BleApiWindows.h" />
+    <ClInclude Include="BleApi\BleApiWinRT.h" />
+    <ClInclude Include="BleApi\BleDevice.h" />
+    <ClInclude Include="BleApi\BleDeviceWindows.h" />
+    <ClInclude Include="BleApi\BleDeviceWinRT.h" />
+    <ClInclude Include="BleApi\fido_apduresponses.h" />
+    <ClInclude Include="BleApi\fido_ble.h" />
+    <ClInclude Include="BLETest\BLETransportTests.h" />
+    <ClInclude Include="BLETest\U2FTests.h" />
+    <ClInclude Include="ble_util\ble_util.h" />
+    <ClInclude Include="ble_util\u2f.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="COPYRIGHT" />
+    <None Include="LICENSE" />
+    <None Include="Makefile.win" />
+    <None Include="README" />
+    <None Include="SAMPLELOG" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{0F936F76-19DD-4263-9E6E-6F966AC1E0CF}</ProjectGuid>
+    <Keyword>MakeFileProj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <NMakeBuildCommandLine>nmake -f Makefile.win</NMakeBuildCommandLine>
+    <NMakeOutput>BLE.exe</NMakeOutput>
+    <NMakeCleanCommandLine>nmake -f Makefile.win clean</NMakeCleanCommandLine>
+    <NMakePreprocessorDefinitions>PLATFORM_WINDOWS;WIN32;_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>core/include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <NMakeBuildCommandLine>nmake -f Makefile.win</NMakeBuildCommandLine>
+    <NMakeOutput>BLE.exe</NMakeOutput>
+    <NMakeCleanCommandLine>nmake -f Makefile.win clean</NMakeCleanCommandLine>
+    <NMakePreprocessorDefinitions>PLATFORM_WINDOWS;WIN32;NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>core/include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

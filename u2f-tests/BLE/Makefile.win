@@ -1,20 +1,49 @@
 
+EXENAME=BLECertificationTool
 ARCHIVENAME=BLECertTool
 7ZIP=C:\Program Files\7-Zip\7z.exe
+FEATURE_WINRT=1
 
-all: BLETest.exe
+VS_PATH=C:/Program Files (x86)/Microsoft Visual Studio 14.0
+WINSDK_PATH=C:/Program Files (x86)/Windows Kits/10
 
-CFLAGS = -nologo -EHsc -W3 -Icore/include -IBleApi -Ible_util -DPLATFORM_WINDOWS -D__OS_WIN
+MSSDK=$(WINSDK_PATH)
+MSTOOLS=$(WINSDK_PATH)
+
+all: $(EXENAME).exe
+
+!IFDEF DEBUG
+CFLAGS = -MDd -ZI
+!ELSE
+CFLAGS = -MD
+!ENDIF
+
+CFLAGS = $(CFLAGS) -nologo -EHsc -W3 -Icore/include -IBleApi -Ible_util -DPLATFORM_WINDOWS -D__OS_WIN 
 
 # Switching to default __stdcall calling convention. works around a bug in the Windows 8.0 Ble headers.
-#  I have been told this causes problems with 
-#  Windows Platform SDK 10, so please try without on that  (unsupported) platform.
+#  I have been told this causes problems with Windows Platform SDK 10, so please try without on that platform.
 CFLAGS = $(CFLAGS) -Gz
+
+#
+# Add support for WinRT 
+#
+!IFDEF FEATURE_WINRT
+CFLAGS = $(CFLAGS) -DFEATURE_WINRT
+CFLAGS_WINRT = -ZW -Gm- -AI"C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/vcpackages" -AI"C:/Program Files (x86)/Windows Kits/10/References/"  -AI"C:/Program Files (x86)/Windows Kits/10/UnionMetaData/"
+!ELSE
+CFLAGS_WINRT =
+!ENDIF
 
 LDFLAGS = setupapi.lib ws2_32.lib
 
-# Crypto code.
+#
+## Crypto code.
+#
+#   We use Google mincrypt from Android, as to the USB tests.
 LIBMINCRYPT=dsa_sig.obj p256.obj p256_ec.obj p256_ecdsa.obj sha256.obj
+
+core/libmincrypt/dsa_sig.c core/libmincrypt/p256.c core/libmincrypt/p256_ec.c core/libmincrypt/p256_ecdsa.c core/libmincrypt/sha256.c:
+		git clone -b lollipop-release https://android.googlesource.com/platform/system/core/
 
 dsa_sig.obj: core/libmincrypt/dsa_sig.c
         $(CC) -Dinline="" -D"dst[P256_NBYTES]"="*dst" -c $(CFLAGS) core/libmincrypt/dsa_sig.c
@@ -31,55 +60,82 @@ p256_ecdsa.obj: core/libmincrypt/p256_ecdsa.c
 sha256.obj: core/libmincrypt/sha256.c
         $(CC) -c $(CFLAGS) core/libmincrypt/sha256.c
 
-# BLE Api
-BLEAPI_HEADER=BleApi/BleApi.h BleApi/BleApiError.h BleApi/BleApiWindows.h BleApi/fido_apduresponses.h BleApi/fido_ble.h BleApi/BleDevice.h
-BLEAPI=BleApi.obj BleApiWindows.obj BleDevice.obj BleDeviceWindows.obj
+#
+##   Generic BLE Api
+#
+BLEAPIGENERIC_HEADER=BleApi/BleApi.h BleApi/BleApiError.h BleApi/fido_apduresponses.h BleApi/fido_ble.h BleApi/BleDevice.h
+BLEAPIWINDOWS_HEADER=BleApi/BleApiWindows.h BleApi/BleDeviceWindows.h
+BLEAPIWINRT_HEADER=BleApi/BleApiWinRT.h BleApi/BleDeviceWinRT.h
+
+BLEAPIGENERIC=BleApi.obj BleDevice.obj
+BLEAPIWINDOWS=BleApiWindows.obj  BleDeviceWindows.obj
+BLEAPIWINRT=BleApiWinRT.obj BleDeviceWinRT.obj
+
+BLEAPI_HEADER=$(BLEAPIGENERIC_HEADER) $(BLEAPIWINDOWS_HEADER) $(BLEAPIWINRT_HEADER)
+BLEAPI=$(BLEAPIGENERIC)
+
+!IFDEF FEATURE_WINRT
+BLEAPI= $(BLEAPI) $(BLEAPIWINRT)
+!ELSE
+BLEAPI= $(BLEAPI) $(BLEAPIWINDOWS)
+!ENDIF
 
 BleApi.obj: BleApi/BleApi.cpp $(BLEAPI_HEADER)
 	$(CXX) -c $(CFLAGS) BleApi/BleApi.cpp -Fo$@
 
-BleApiWindows.obj: BleApi/BleApiWindows.cpp $(BLEAPI_HEADER)
-	$(CXX) -c $(CFLAGS) BleApi/BleApiWindows.cpp -Fo$@
-
 BleDevice.obj: BleApi/BleDevice.cpp $(BLEAPI_HEADER)
 	$(CXX) -c $(CFLAGS) BleApi/BleDevice.cpp -Fo$@
+
+BleApiWindows.obj: BleApi/BleApiWindows.cpp $(BLEAPI_HEADER)
+	$(CXX) -c $(CFLAGS) BleApi/BleApiWindows.cpp -Fo$@
 
 BleDeviceWindows.obj: BleApi/BleDeviceWindows.h $(BLEAPI_HEADER)
 	$(CXX) -c $(CFLAGS) BleApi/BleDeviceWindows.cpp -Fo$@
 
-# utility tools.
+BleApiWinRT.obj: BleApi/BleApiWinRT.cpp $(BLEAPI_HEADER)
+	$(CXX) -c $(CFLAGS) $(CFLAGS_WINRT) BleApi/BleApiWinRT.cpp -Fo$@
+
+BleDeviceWinRT.obj: BleApi/BleDeviceWinRT.h $(BLEAPI_HEADER)
+	$(CXX) -c $(CFLAGS) $(CFLAGS_WINRT) BleApi/BleDeviceWinRT.cpp -Fo$@
+
+#
+##  Some utilities
+#
 ble_util.obj: ble_util/ble_util.cpp ble_util/ble_util.h
         $(CXX) -c $(CFLAGS) ble_util/ble_util.cpp -Fo$@
 
-# Core test program.
-BleApiTest.exe: BleApiTest/BleApiTest.cpp ble_util.obj $(BLEAPI)
-        $(CXX) $(CFLAGS) BleApiTest/BleApiTest.cpp ble_util.obj $(BLEAPI) $(LDFLAGS)
-
-# BLE Test
+#
+##  BLE Tests
+#
 BLETEST=U2FTests.obj BLETransportTests.obj
-U2FTests.obj: BLETest/U2FTests.cpp BLETest/U2FTests.h $(BLEAPI_HEADER)
+U2FTests.obj: BLETest/U2FTests.cpp BLETest/U2FTests.h $(BLEAPI_HEADER) $(LIBMINCRYPT)
 	$(CXX) -c $(CFLAGS) BLETest/U2FTests.cpp -Fo$@
 
 BLETransportTests.obj: BLETest/BLETransportTests.cpp BLETest/U2FTests.h $(BLEAPI_HEADER)
 	$(CXX) -c $(CFLAGS) BLETest/BLETransportTests.cpp -Fo$@
 
 
-# Actual BLE tests
-BLETest.exe: BLETest/BLETest.cpp ble_util.obj $(BLEAPI) $(BLETEST) $(LIBMINCRYPT)
-        $(CXX) $(CFLAGS) BLETest/BLETest.cpp ble_util.obj $(BLEAPI) $(BLETEST) $(LIBMINCRYPT) $(LDFLAGS) -Fe$@
+#
+## Actual BLE test executable
+#
+$(EXENAME).exe: BLETest/BLETest.cpp ble_util.obj $(BLEAPI) $(BLETEST) $(LIBMINCRYPT)
+        $(CXX) $(CFLAGS) BLETest/BLETest.cpp ble_util.obj $(BLEAPI) $(BLETEST) $(LIBMINCRYPT) $(LDFLAGS) -Fe$@ -link -SUBSYSTEM:CONSOLE
 
+#
+##  Cleaning and packaging targets.
+#
 clean:
 	del *.exe *.obj
 
 dist: BLECertTool.zip
 
-BLECertTool.zip: BLETest.exe
+BLECertTool.zip: $(EXENAME).exe
 	-rmdir /q /s $(ARCHIVENAME)
 	mkdir $(ARCHIVENAME)
-	xcopy /y BLETest.exe $(ARCHIVENAME)
-	move  /y $(ARCHIVENAME)\BLETest.exe $(ARCHIVENAME)\BLETest.ex_
+	xcopy /y $(EXENAME).exe $(ARCHIVENAME)
+	move  /y $(ARCHIVENAME)\$(EXENAME).exe $(ARCHIVENAME)\$(EXENAME).ex_
 	xcopy /y LICENSE $(ARCHIVENAME)
-	move $(ARCHIVENAME)\LICENSE $(ARCHIVENAME)\LICENSE.BLETest
+	move $(ARCHIVENAME)\LICENSE $(ARCHIVENAME)\LICENSE.$(EXENAME)
 	xcopy /y core\libmincrypt\NOTICE $(ARCHIVENAME)
 	move $(ARCHIVENAME)\NOTICE $(ARCHIVENAME)\LICENSE.libmincrypt
 	xcopy /y README $(ARCHIVENAME)
