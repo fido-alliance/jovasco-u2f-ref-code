@@ -235,7 +235,7 @@ int __cdecl main(int argc, char *argv[])
 		}
 		if (!strncmp(argv[count], "-i", 2)) {
 			// skip iso7816 tests
-			arg_iso7816 = true;
+			arg_iso7816 = false;
 		}
 		if (!strncmp(argv[count], "-w", 2)) {
 			// treat warnings as errors
@@ -275,6 +275,8 @@ int __cdecl main(int argc, char *argv[])
 		}
 		++count;
 	}
+
+  std::cout << "BLE Certification Tool " << VERSION << std::endl;
 
 	try {
 		pBleApi api = BleApi::CreateAPI(configuration);
@@ -318,20 +320,46 @@ int __cdecl main(int argc, char *argv[])
 		if (!dev) {
 			std::cout << "No valid device found.\n" << std::endl;
 			exit(-1);
-		} else {
-			std::cout << "Running tests on device " <<
-			    dev->Identifier() << std::endl;
 		}
+    std::cout << std::endl;
 
     /* verify device is accordign to spec */
+    std::cout << "==== Selected Device ====" << std::endl;
     dev->Report();
     dev->Verify();
+    std::cout << std::endl;
 
-		/* something to do? */
-		if (!(arg_transport || arg_u2f || arg_iso7816)) {
-			std::cout << "Nothing to do." << std::endl;
-			return 0;
-		}
+    /* report on configuration selection */
+    std::cout << "==== Configuration ====" << std::endl;
+    std::cout << "U2F Version: ";
+    switch (configuration.version)
+    {
+    case U2FVersion::V1_0:
+      std::cout << "1.0";
+      break;
+    case U2FVersion::V1_1:
+      std::cout << "1.1";
+      break;
+    default:
+      break;
+    }
+    std::cout << std::endl;
+    std::cout << "Encryption : " << (configuration.encrypt ? "Yes" : "No") << std::endl;
+    std::cout << "Adaptive   : " << (configuration.adaptive? "Yes" : "No") << std::endl;
+    std::cout << "Logging    : " << (configuration.logging ? "Yes" : "No") << std::endl;
+    std::cout << std::endl;
+
+    /* something to do? */
+    if (!(arg_transport || arg_u2f || arg_iso7816)) {
+      std::cout << "Nothing to do." << std::endl;
+      return 0;
+    }
+
+    std::cout << "==== Selected Tests ====" << std::endl;
+    std::cout << "BLE Transport Tests    : " << (arg_transport ? "Yes" : "No") << std::endl;
+    std::cout << "U2F Raw Messages Tests : " << (arg_u2f       ? "Yes" : "No") << std::endl;
+    std::cout << "ISO7816-4 Tests        : " << (arg_iso7816   ? "Yes" : "No") << std::endl;
+    std::cout << std::endl;
 
 		/* check that link encryption is enabled */
 		WARN_EQ(configuration.encrypt, true);

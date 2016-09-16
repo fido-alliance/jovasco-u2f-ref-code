@@ -97,5 +97,6 @@
     <None Include="README" />
     <None Include="SAMPLELOG" />
     <None Include="ChangeLog" />
+    <None Include="VERSION" />
   </ItemGroup>
 </Project>

@@ -1,4 +1,6 @@
 
 U2F V1.1:
+* Add configuration optiosn for U2F version
+* Add Verify() and Report() functions to validate device and display some information.
 * Enable ISO ISO7816-4 by default.
 * No longer support USB behavior. This was default and didn't make sense.
