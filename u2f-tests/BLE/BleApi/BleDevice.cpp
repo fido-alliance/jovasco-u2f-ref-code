@@ -39,8 +39,8 @@ static std::string bytes2ascii(const unsigned char *ptr, int len)
 	return r;
 }
 
- BleDevice::BleDevice(bool encrypt, bool logging):
-mCommandInProgress(false), mTimeout(0), mEncryption(encrypt), mLogging(logging)
+ BleDevice::BleDevice(BleApiConfiguration &configuration) :
+mCommandInProgress(false), mTimeout(0), mConfiguration(configuration), mSupportsVersion_1_0(false), mSupportsVersion_1_1(false)
 {
 }
 
@@ -64,6 +64,16 @@ ReturnValue BleDevice::U2FVersionRead(unsigned char *buffer,
 				      unsigned int *bufferLength)
 {
 	throw std::exception("Not Implemented.");
+}
+
+ReturnValue BleDevice::U2FVersionBitfieldRead(unsigned char * buffer, unsigned int * bufferLength)
+{
+  throw std::exception("Not Implemented.");
+}
+
+ReturnValue BleDevice::U2FVersionBitfieldWrite(unsigned char * buffer, unsigned int * bufferLength)
+{
+  throw std::exception("Not Implemented.");
 }
 
 ReturnValue BleDevice::Sleep(unsigned int miliseconds)
@@ -93,6 +103,22 @@ ReturnValue BleDevice::SetTimeout(uint64_t timeoutms)
 std::string BleDevice::Identifier()
 {
 	throw std::exception("Not Implemented.");
+}
+
+bool BleDevice::SupportsVersion(U2FVersion version)
+{
+  switch (version) {
+  case U2FVersion::V1_0:
+    return mSupportsVersion_1_0;
+  case U2FVersion::V1_1:
+    return mSupportsVersion_1_1;
+  }
+  return false;
+}
+
+bool BleDevice::SelectVersion(U2FVersion version, bool force)
+{
+  throw std::exception("Not Implemented.");
 }
 
 void BleDevice::Lock()

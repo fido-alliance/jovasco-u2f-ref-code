@@ -12,11 +12,9 @@
 
 int arg_Verbose = 0;		// default
 bool arg_hasButton = false;
-bool arg_preapproval = false;
 bool arg_u2f = true;
 bool arg_transport = true;
-bool arg_iso7816 = false;
-bool arg_encryption = true;
+bool arg_iso7816 = true;
 bool arg_tracing = false;
 
 #define REPLY_BUFFER_LENGTH 256
@@ -138,21 +136,9 @@ ReturnValue U2FTests(pBleDevice dev)
 	PASS(BleApiTest_VersionWrongLength(dev));
 	PASS(BleApiTest_RegisterWrongLength(dev));
 
-	if (arg_hasButton && !arg_preapproval)
-		PASS(BleApiTest_Enroll(dev, FIDO_RESP_USERPRESENCE_REQUIRED));
-
 	PASS(BleApiTest_Enroll(dev));
 
 	WaitForUserPresence(dev, arg_hasButton);
-
-	// fob with button but without pre-approval should need approval.               
-	if (arg_hasButton && !arg_preapproval)
-		PASS(BleApiTest_Sign(dev, FIDO_RESP_USERPRESENCE_REQUIRED));
-
-	// Sign with check only should not produce signature.
-	if (!arg_preapproval)
-		PASS(BleApiTest_Sign
-		     (dev, FIDO_RESP_USERPRESENCE_REQUIRED, true));
 
 	// Sign with wrong kh.
 	PASS(BleApiTest_Sign(dev, FIDO_RESP_WRONG_DATA, false, true, false));
@@ -160,16 +146,11 @@ ReturnValue U2FTests(pBleDevice dev)
 	// Sign with wrong AppID.
 	PASS(BleApiTest_Sign(dev, FIDO_RESP_WRONG_DATA, false, false, true));
 
-	if (!arg_preapproval)
-		WaitForUserPresence(dev, arg_hasButton);
-
 	// Sign with check only should not produce signature.
 	PASS(BleApiTest_Sign(dev, FIDO_RESP_USERPRESENCE_REQUIRED, true));
 
 	uint32_t ctr1;
 	PASS(ctr1 = BleApiTest_Sign(dev));
-	if (!arg_preapproval)
-		PASS(BleApiTest_Sign(dev, FIDO_RESP_USERPRESENCE_REQUIRED));
 
 	WaitForUserPresence(dev, arg_hasButton);
 
@@ -193,10 +174,9 @@ void Usage(char *name)
 	    << "  -v : Verbose" << std::endl
 	    << "  -V : Even more verbose" << std::endl
 	    << "  -p : Pause at failed test" << std::endl
-	    << "  -e : Device does preapproval when turned on" << std::endl
 	    << "  -u : Disable U2F Raw Message tests. " << std::endl
 	    << "  -t : Disable BLE Transport tests." << std::endl
-	    << "  -i : Enable U2F ISO7816-4 encoding tests." << std::endl
+	    << "  -i : Disable U2F ISO7816-4 encoding tests." << std::endl
 	    << "  -w : Warnings are treated as errors." << std::endl
 	    << "  -x : Disable encrypted connection requirement." << std::endl
 	    << "  -c : Toggle ANSI colors." << std::endl
@@ -212,16 +192,17 @@ int __cdecl main(int argc, char *argv[])
 	pBleDevice dev = NULL;
 	bool arg_ShowDevices = false;
 	char *arg_DeviceIdentifier = NULL;
+  BleApiConfiguration  configuration;
 
 	while (count < argc) {
 		if (!strncmp(argv[count], "-v", 2)) {
 			// INFO only
-			arg_Verbose |= 1;
+      configuration.logging |= BleApiLogging::Info;
 		}
 		if (!strncmp(argv[count], "-V", 2)) {
 			// INFO only
-			arg_Verbose |= 2;
-		}
+      configuration.logging |= BleApiLogging::Debug;
+    }
 		if (!strncmp(argv[count], "-a", 2)) {
 			// Don't abort, try continue;
 			arg_Abort = false;
@@ -237,10 +218,10 @@ int __cdecl main(int argc, char *argv[])
 			// Fob does not have button
 			arg_hasButton = false;
 		}
-		if (!strncmp(argv[count], "-e", 2)) {
-			// fob uses pre-approval
-			arg_preapproval = true;
-		}
+    if (!strncmp(argv[count], "-e", 2)) {
+      // fob uses pre-approval
+      std::cout << "WARNING: -e option default and removed." << std::endl;
+    }
 		if (!strncmp(argv[count], "-u", 2)) {
 			// skip u2f tests
 			arg_u2f = false;
@@ -263,7 +244,7 @@ int __cdecl main(int argc, char *argv[])
 		}
 		if (!strncmp(argv[count], "-T", 2)) {
 			// treat warnings as errors
-			arg_tracing = true;
+      configuration.logging |= BleApiLogging::Tracing;
 		}
 		if (!strncmp(argv[count], "-d", 2)) {
 			// treat warnings as errors
@@ -276,7 +257,7 @@ int __cdecl main(int argc, char *argv[])
 			arg_DeviceIdentifier = argv[count];
 		}
 		if (!strncmp(argv[count], "-x", 2)) {
-			arg_encryption = false;
+			configuration.encrypt = false;
 			std::cout << "BLE connection encryption disabled." <<
 			    std::endl;
 		}
@@ -287,7 +268,7 @@ int __cdecl main(int argc, char *argv[])
 	}
 
 	try {
-		pBleApi api = BleApi::CreateAPI(arg_encryption, arg_tracing);
+		pBleApi api = BleApi::CreateAPI(configuration);
 
 		/* find U2F Devices */
 		std::vector < pBleDevice > devices = api->findDevices();
@@ -340,7 +321,7 @@ int __cdecl main(int argc, char *argv[])
 		}
 
 		/* check that link encryption is enabled */
-		WARN_EQ(arg_encryption, true);
+		WARN_EQ(configuration.encrypt, true);
 
 		/* do ble transport tests */
 		if (arg_transport) {

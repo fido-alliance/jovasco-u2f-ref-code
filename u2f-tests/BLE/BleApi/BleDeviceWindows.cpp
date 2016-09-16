@@ -34,6 +34,8 @@ DEFINE_GUID(GUID_BLUETOOTHLE_FIDO_STATUS, 0xF1D0FFF2, 0xDEAA, 0xECEE, 0xB4,
 DEFINE_GUID(GUID_BLUETOOTHLE_FIDO_CTRLPT_LEN, 0xF1D0FFF3, 0xDEAA, 0xECEE, 0xB4,
 	    0x2F, 0xC9, 0xBA, 0x7E, 0xD6, 0x23, 0xBB);
 #define GUID_BLUETOOTHLE_FIDO_VERSION	0x2A28
+DEFINE_GUID(GUID_BLUETOOTHLE_FIDO_VERSIONBITFIELD, 0xF1D0FFF3, 0xDEAA, 0xECEE, 0xB4,
+  0x2F, 0xC9, 0xBA, 0x7E, 0xD6, 0x23, 0xBB);
 
 #define HRESULT_RUNTIME_EXCEPTION(x)		hresult_exception(__FILE__, __LINE__, x);
 #define STRING_RUNTIME_EXCEPTION(x)		std::runtime_error( __FILE__ + std::to_string(__LINE__) + x)
@@ -113,8 +115,8 @@ VOID BleDeviceWindows::OnBluetoothGattEventCallback(_In_ BTH_LE_GATT_EVENT_TYPE
 	UnLock();
 }
 
- BleDeviceWindows::BleDeviceWindows(pBleApi pBleApi, std::string deviceInstanceId, HANDLE deviceHandle, HANDLE serviceHandle, bool encrypt, bool logging):
-BleDevice(encrypt, logging), mDeviceInstanceId(deviceInstanceId), mDeviceHandle(deviceHandle),	// take ownership
+ BleDeviceWindows::BleDeviceWindows(pBleApi pBleApi, std::string deviceInstanceId, HANDLE deviceHandle, BleApiConfiguration &configuration) :
+BleDevice(configuration), mDeviceInstanceId(deviceInstanceId), mDeviceHandle(deviceHandle),	// take ownership
     mServiceHandle(serviceHandle), mEventHandleValid(false)
     // take ownership
 {
@@ -233,8 +235,8 @@ BleDevice(encrypt, logging), mDeviceInstanceId(deviceInstanceId), mDeviceHandle(
 		throw STRING_RUNTIME_EXCEPTION
 		    ("Can't find Manufacturer Name String Characteristic in Device Information Service.");
 	if (!foundModelNumberString)
-		throw STRING_RUNTIME_EXCEPTION
-		    ("Can't find Model Number String Characteristic in Device Information Service.");
+		  throw STRING_RUNTIME_EXCEPTION
+		      ("Can't find Model Number String Characteristic in Device Information Service.");
 	if (!foundFirmwareRevisionString)
 		throw STRING_RUNTIME_EXCEPTION
 		    ("Can't find Firmware Revision String Characteristic in Device Information Service.");
@@ -266,8 +268,8 @@ BleDevice(encrypt, logging), mDeviceInstanceId(deviceInstanceId), mDeviceHandle(
 		throw HRESULT_RUNTIME_EXCEPTION(hResult);
 	}
 
-	bool foundControlPoint = false, foundControlPointLength =
-	    false, foundStatus = false, foundRevision = false;
+  bool foundControlPoint = false, foundControlPointLength =
+    false, foundStatus = false, foundRevision = false;
 	for (i = 0; i < characteristicsCount; i++) {
 		if (characteristics[i].CharacteristicUuid.Value.LongUuid ==
 		    GUID_BLUETOOTHLE_FIDO_CONTROLPOINT) {
@@ -287,10 +289,11 @@ BleDevice(encrypt, logging), mDeviceInstanceId(deviceInstanceId), mDeviceHandle(
 			mCharacteristicStatus = characteristics[i];
 			continue;
 		}
-		if (characteristics[i].CharacteristicUuid.Value.ShortUuid ==
+    if (characteristics[i].CharacteristicUuid.Value.ShortUuid ==
 		    GUID_BLUETOOTHLE_FIDO_VERSION) {
 			foundRevision = true;
 			mCharacteristicVersion = characteristics[i];
+      mSupportsVersion_1_0 = true;
 			continue;
 		}
 	}
@@ -298,16 +301,16 @@ BleDevice(encrypt, logging), mDeviceInstanceId(deviceInstanceId), mDeviceHandle(
 
 	if (!foundControlPoint)
 		STRING_RUNTIME_EXCEPTION
-		    ("Could not find Control Point Characteristic in FIDO Service.");
+	    ("Could not find Control Point Characteristic in FIDO Service.");
 	if (!foundControlPointLength)
 		STRING_RUNTIME_EXCEPTION
-		    ("Could not find Control Point Length Characteristic in FIDO Service.");
+	    ("Could not find Control Point Length Characteristic in FIDO Service.");
 	if (!foundStatus)
 		STRING_RUNTIME_EXCEPTION
-		    ("Could not find Status Characteristic in FIDO Service.");
-	if (!foundRevision)
+	    ("Could not find Status Characteristic in FIDO Service.");
+	if (!foundRevision && (mApiVersion == U2FVersion::V1_0))
 		STRING_RUNTIME_EXCEPTION
-		    ("Could not find U2F Version Characteristic in FIDO Service.");
+	    ("API Version is 1.0 but could not find U2F Version Characteristic in FIDO Service.");
 
 	//
 	// Find CCC in Status characteristic

@@ -42,7 +42,7 @@ class BleDeviceWindows : public BleDevice {
  public:
 	BleDeviceWindows(pBleApi pBleApi, std::string deviceInstanceId,
 			 HANDLE deviceHandle, HANDLE serviceHandle,
-			 bool encrypt = true, bool logging = false);
+       BleApiConfiguration &configuration);
 	~BleDeviceWindows();
 
 	bool hasPath(std::string path);
@@ -65,7 +65,7 @@ class BleDeviceWindows : public BleDevice {
 	virtual std::string Identifier();
 
  protected:
-	 virtual void Lock();
+	virtual void Lock();
 	virtual void UnLock();
 
  protected:

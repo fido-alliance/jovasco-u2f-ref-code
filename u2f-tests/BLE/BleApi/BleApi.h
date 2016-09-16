@@ -19,24 +19,26 @@
 #ifndef _BLEAPI_BLEAPI_H_
 #define _BLEAPI_BLEAPI_H_
 
+#include "BleApiTypes.h"
 #include "BleDevice.h"
 
 #include <string>
 #include <vector>
 
 typedef class BleApi {
+protected:
+  BleApi(BleApiConfiguration &configuration);
+  ~BleApi(void);
+
+public:
+  virtual std::vector < pBleDevice > findDevices();
+
+  static BleApi *CreateAPI(BleApiConfiguration &configuration);
+
+  U2FVersion GetU2FVersion() { return mConfiguration.version; };
+
  protected:
-	BleApi(bool encryption = true, bool logging = false);
-	~BleApi(void);
-
- public:
-	 virtual std::vector < pBleDevice > findDevices();
-
-	static BleApi *CreateAPI(bool encryption = true, bool logging = false);
-
- protected:
-	 bool mEncryption;
-	bool mLogging;
+   BleApiConfiguration        mConfiguration;
 	 std::vector < pBleDevice > mDeviceList;
 } *pBleApi;
 

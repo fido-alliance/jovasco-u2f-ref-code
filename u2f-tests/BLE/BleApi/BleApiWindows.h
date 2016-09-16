@@ -24,13 +24,16 @@
 #include <string>
 #include <vector>
 
-typedef class BleApiWindows:BleApi {
+typedef class BleApiWindows : public BleApi {
  public:
-	BleApiWindows(bool encryption = true, bool logging = false);
+	BleApiWindows(BleApiConfiguration &configuration);
 	~BleApiWindows(void);
 
  public:
 	 virtual std::vector < BleDevice * >findDevices();
+
+private:
+  U2FVersion mU2FVersion;
 } *pBleApiWindows;
 
 #endif				/* _BLEAPI_BLEAPIWINDOWS_H_ */

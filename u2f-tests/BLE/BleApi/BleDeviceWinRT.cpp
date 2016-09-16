@@ -22,6 +22,8 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "fido_ble.h"
+
 #include <BleDeviceWinRT.h>
 
 using namespace Platform;
@@ -134,24 +136,48 @@ private:
 //  methods
 //
 
-BleDeviceWinRT::BleDeviceWinRT(pBleApi pBleApi, std::string deviceInstanceId, Windows::Devices::Bluetooth::BluetoothLEDevice ^ device, bool encrypt, bool logging)
-  : BleDevice(encrypt, logging)
+BleDeviceWinRT::BleDeviceWinRT(pBleApi pBleApi, std::string deviceInstanceId, Windows::Devices::Bluetooth::BluetoothLEDevice ^ device, BleApiConfiguration &configuration)
+  : BleDevice(configuration)
   , mDevice(device)
   , mDeviceInstanceId(deviceInstanceId)
   , mNotificationsRegistered(false)
 {
-  //CHECK_SERVICE(mDevice, DeviceInformation);
+  try {
+    GattDeviceService ^dis = mDevice->GetGattService(GattServiceUuids::DeviceInformation);
+    if (dis == nullptr)
+      throw STRING_RUNTIME_EXCEPTION
+        ("Could not get Device Information Service.");
 
+    auto manufacturerNameString = dis->GetCharacteristics(GattCharacteristicUuids::ManufacturerNameString);
+    if (!manufacturerNameString || (manufacturerNameString->Size < 1))
+      throw STRING_RUNTIME_EXCEPTION
+        ("Can't find Manufacturer Name String Characteristic in Device Information Service.");
+
+    auto modelNumberString      = dis->GetCharacteristics(GattCharacteristicUuids::ModelNumberString);
+    if (!modelNumberString || (modelNumberString->Size < 1))
+      throw STRING_RUNTIME_EXCEPTION
+        ("Can't find Model Number String Characteristic in Device Information Service.");
+
+    auto firmwareRevisionString = dis->GetCharacteristics(GattCharacteristicUuids::FirmwareRevisionString);
+    if (!firmwareRevisionString || (firmwareRevisionString->Size < 1))
+      throw STRING_RUNTIME_EXCEPTION
+        ("Can't find Firmware Revision String Characteristic in Device Information Service.");
+
+  } catch (std::runtime_error &e) {
+    throw e;
+  } catch (...) {
+    STRING_RUNTIME_EXCEPTION("Error checking Device Information Service.");
+  }
 
   mService = mDevice->GetGattService(FIDO_SERVICE_GUID);
   if (!mService)
-    STRING_RUNTIME_EXCEPTION("Could not get Service.");
+    STRING_RUNTIME_EXCEPTION("Could not get FIDO Service.");
 
   // control point length
   auto 
   characteristics =  mService->GetCharacteristics(FIDO_CHARACTERISTIC_CONTROLPOINTLENGTH_GUID);
   if (characteristics->Size == 0)
-    throw STRING_RUNTIME_EXCEPTION("Could not get ControlPoint Length Characteristic.");
+    throw STRING_RUNTIME_EXCEPTION("Could not find Control Point Length Characteristic in FIDO Service.");
 
   mCharacteristicControlPointLength = characteristics->GetAt(0);
 
@@ -160,16 +186,16 @@ BleDeviceWinRT::BleDeviceWinRT(pBleApi pBleApi, std::string deviceInstanceId, Wi
   // control point
   characteristics = mService->GetCharacteristics(FIDO_CHARACTERISTIC_CONTROLPOINT_GUID);
   if (characteristics->Size == 0)
-    throw STRING_RUNTIME_EXCEPTION("Could not get ControlPoint Characteristic.");
+    throw STRING_RUNTIME_EXCEPTION("Could not find Control Point Characteristic in FIDO Service.");
 
   mCharacteristicControlPoint = characteristics->GetAt(0);
 
-  CHECK_CHARACTERISTIC_PROPERTY_SET(mCharacteristicControlPoint, WriteWithoutResponse);
+  CHECK_CHARACTERISTIC_PROPERTY_SET(mCharacteristicControlPoint, Write);
 
   // status
   characteristics = mService->GetCharacteristics(FIDO_CHARACTERISTIC_STATUS_GUID);
   if (characteristics->Size == 0)
-    throw STRING_RUNTIME_EXCEPTION("Could not get Status Characteristic.");
+    throw STRING_RUNTIME_EXCEPTION("Could not find Status Characteristic in FIDO Service.");
 
   mCharacteristicStatus = characteristics->GetAt(0);
   CHECK_CHARACTERISTIC_PROPERTY_SET(mCharacteristicStatus, Notify);
@@ -189,11 +215,27 @@ BleDeviceWinRT::BleDeviceWinRT(pBleApi pBleApi, std::string deviceInstanceId, Wi
     mCharacteristicVersionBitfield = characteristics->GetAt(0);
 
     CHECK_CHARACTERISTIC_PROPERTY_SET(mCharacteristicVersionBitfield, Read);
+    CHECK_CHARACTERISTIC_PROPERTY_SET(mCharacteristicVersionBitfield, Write);
   }
 
   if (!v10version && !v11version) 
-    throw STRING_RUNTIME_EXCEPTION("Could not get Version or VersionBitfield Characteristic.");
-  
+    throw STRING_RUNTIME_EXCEPTION("Could not find Version or VersionBitfield Characteristic in FIDO Service.");
+
+  if ((mConfiguration.version == U2FVersion::V1_0) && !v10version)
+    throw STRING_RUNTIME_EXCEPTION("U2F Version is 1.0 and could not find Version Characteristic in FIDO Service.");
+
+  if ((mConfiguration.version == U2FVersion::V1_1) && !v11version)
+    throw STRING_RUNTIME_EXCEPTION("U2F Version is 1.1 and could not find VersionBitfield Characteristic in FIDO Service.");
+
+  // check CCC is present
+  try {
+    GattReadClientCharacteristicConfigurationDescriptorResult ^result = create_task(mCharacteristicStatus->ReadClientCharacteristicConfigurationDescriptorAsync()).get();
+    if (!result || (result->Status != GattCommunicationStatus::Success))
+      throw;
+  } catch (...) {
+      throw STRING_RUNTIME_EXCEPTION("Could not find Client Characteristic Configuration Descriptor in Status Characteristic.");
+  }
+
   // mutex init
   mMutex = CreateMutex(NULL, false, NULL);
   if (mMutex == NULL)
@@ -217,7 +259,7 @@ ReturnValue BleDeviceWinRT::ControlPointWrite(unsigned char * buffer, unsigned i
 {
   IBuffer ^b = ConvertToIBuffer(buffer, bufferLength);
 
-  if (mLogging)
+  if (mConfiguration.logging & BleApiLogging::Tracing)
     std::cout << "   WRITE: " << bytes2ascii(buffer,
       bufferLength).c_str()
     << std::endl;
@@ -289,6 +331,23 @@ ReturnValue BleDeviceWinRT::U2FVersionRead(unsigned char * buffer, unsigned int 
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
+ReturnValue BleDeviceWinRT::U2FVersionBitfieldRead(unsigned char * buffer, unsigned int * bufferLength)
+{
+  ReturnValue retval;
+
+  // read characteristic
+  GattReadResult ^result = create_task(mCharacteristicVersionBitfield->ReadValueAsync()).get();
+  if (result->Status != GattCommunicationStatus::Success)
+    return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+
+  // convert to C++ data.
+  retval = ConvertFromIBuffer(result->Value, buffer, *bufferLength);
+  if (retval)
+    return retval;
+
+  return ReturnValue::BLEAPI_ERROR_SUCCESS;
+}
+
 ReturnValue BleDeviceWinRT::RegisterNotifications(pEventHandler eventHandler)
 {
   ReturnValue retval = BleDevice::RegisterNotifications(eventHandler);
@@ -307,7 +366,7 @@ ReturnValue BleDeviceWinRT::RegisterNotifications(pEventHandler eventHandler)
 
   // check if notifications are already enabled.
   GattReadClientCharacteristicConfigurationDescriptorResult ^result = create_task(mCharacteristicStatus->ReadClientCharacteristicConfigurationDescriptorAsync()).get();
-  if (result && (result->Status != GattCommunicationStatus::Success))
+  if (!result || (result->Status != GattCommunicationStatus::Success))
     return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
 
   // if not, enable them.
@@ -337,6 +396,60 @@ std::string BleDeviceWinRT::Identifier()
   return mDeviceInstanceId;
 }
 
+bool BleDeviceWinRT::SupportsVersion(U2FVersion version)
+{
+  unsigned char buffer[512];
+  unsigned int bufferLength(sizeof(buffer));
+
+  // no bitfield characteristic.
+  if (version == U2FVersion::V1_0)
+    return mSupportsVersion_1_0;
+
+  // check the bitfield characteristic.
+  ReturnValue retval = U2FVersionBitfieldRead(buffer, &bufferLength);
+  if (retval != ReturnValue::BLEAPI_ERROR_SUCCESS)
+    throw STRING_RUNTIME_EXCEPTION("Could not read U2FVersionBitField characteristic.");
+
+  // must be at least 1 byte if not, characteristic must be omitted.
+  if (bufferLength < 1)
+    throw STRING_RUNTIME_EXCEPTION("Could not read at least 1 byte from U2FVersionBitField characteristic.");
+
+  // verify 0 bytes are omitted.
+  if ((buffer[bufferLength - 1] == 0))
+      throw STRING_RUNTIME_EXCEPTION("U2FVersionBitField characteristic ends in 0 byte, byte must be omitted.");
+
+  // check version bits
+  switch (version) {
+  case U2FVersion::V1_1:
+    if (bufferLength < FIDO_BLE_VERSIONBITFIELD_VERSION_1_1_OFFSET)
+      return false;
+
+    if (buffer[FIDO_BLE_VERSIONBITFIELD_VERSION_1_1_OFFSET] & FIDO_BLE_VERSIONBITFIELD_VERSION_1_1_BIT)
+      return true;
+
+    return false;
+  default:
+    return false;
+  }
+
+  return false;
+}
+
+bool BleDeviceWinRT::SelectVersion(U2FVersion version, bool force)
+{
+  // if 1.0 is supported, this is the default version.
+  if (mSupportsVersion_1_0 && (version == U2FVersion::V1_0))
+    return true;
+
+  // check if we support the version we want to select, unless we are forcing a write.
+  if (!force && !SupportsVersion(version))
+    return false;
+  
+  // now we write the characteristic.
+
+  return true;
+}
+
 void BleDeviceWinRT::Lock()
 {
   WaitForSingleObject(mMutex, INFINITE);
@@ -356,7 +469,7 @@ void BleDeviceWinRT::OnNotification(GattCharacteristic^ sender, GattValueChanged
   Array<unsigned char> ^a;
   CryptographicBuffer::CopyToByteArray(args->CharacteristicValue, &a);
 
-  if (mLogging)
+  if (mConfiguration.logging & BleApiLogging::Tracing)
     std::cout << "   READ: " <<
     bytes2ascii
     (a->Data,

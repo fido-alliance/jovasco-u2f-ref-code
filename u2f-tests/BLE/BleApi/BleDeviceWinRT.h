@@ -28,7 +28,7 @@
 class BleDeviceWinRT : public BleDevice {
 public:
   BleDeviceWinRT(pBleApi pBleApi, std::string deviceInstanceId, Windows::Devices::Bluetooth::BluetoothLEDevice ^device,
-    bool encrypt = true, bool logging = false);
+    BleApiConfiguration &configuration);
   ~BleDeviceWinRT();
 
   bool hasPath(std::string path);
@@ -39,6 +39,8 @@ public:
   virtual ReturnValue ControlPointLengthRead(unsigned int *length);
   virtual ReturnValue U2FVersionRead(unsigned char *buffer,
     unsigned int *bufferLength);
+  virtual ReturnValue U2FVersionBitfieldRead(unsigned char *buffer,
+    unsigned int *bufferLength);
   virtual ReturnValue RegisterNotifications(pEventHandler eventHandler);
 
   virtual ReturnValue Sleep(unsigned int miliseconds);
@@ -46,6 +48,10 @@ public:
 
   // device Identification
   virtual std::string Identifier();
+
+  // version management
+  virtual bool SupportsVersion(U2FVersion version);
+  virtual bool SelectVersion(U2FVersion version, bool force = false);
 
 protected:
   virtual void Lock();

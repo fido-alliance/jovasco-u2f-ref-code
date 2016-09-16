@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 
+#include "BleApiTypes.h"
 #include "BleApiError.h"
 
 typedef class BleDevice {
@@ -37,7 +38,7 @@ typedef class BleDevice {
 				       unsigned int bufferLength);
 
  protected:
-	 BleDevice(bool encrypt = true, bool logging = false);
+	 BleDevice(BleApiConfiguration &configuration);
 
  public:
 	~BleDevice(void);
@@ -49,7 +50,11 @@ typedef class BleDevice {
 	virtual ReturnValue ControlPointLengthRead(unsigned int *length);
 	virtual ReturnValue U2FVersionRead(unsigned char *buffer,
 					   unsigned int *bufferLength);
-	virtual ReturnValue RegisterNotifications(pEventHandler eventHandler);
+  virtual ReturnValue U2FVersionBitfieldRead(unsigned char *buffer,
+             unsigned int *bufferLength);
+  virtual ReturnValue U2FVersionBitfieldWrite(unsigned char *buffer,
+    unsigned int *bufferLength);
+  virtual ReturnValue RegisterNotifications(pEventHandler eventHandler);
 
 	// send a full command 
 	virtual ReturnValue CommandWrite(unsigned char cmd,
@@ -66,6 +71,10 @@ typedef class BleDevice {
 
 	// device Identification
 	virtual std::string Identifier();
+
+  // version management
+  virtual bool SupportsVersion(U2FVersion version);
+  virtual bool SelectVersion(U2FVersion version, bool force = false);
 
  protected:
 	// routes events and does reassembly for CommandWrite 
@@ -89,13 +98,14 @@ typedef class BleDevice {
 	ReturnValue mReplyRetval;
 	char *mReplyErrorMessage;
 
-	 std::vector < pEventHandler > mEventHandlerList;
+	std::vector < pEventHandler > mEventHandlerList;
 
  protected:
 	// do we need to do encryption
-	 bool mEncryption;
-	bool mLogging;
+  BleApiConfiguration mConfiguration;
 
+  bool mSupportsVersion_1_0;
+  bool mSupportsVersion_1_1;
 } *pBleDevice;
 
 #endif				/* _BLEAPI_FIDODEVICE_H_ */

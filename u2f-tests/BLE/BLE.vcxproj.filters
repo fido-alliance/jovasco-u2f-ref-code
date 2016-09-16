@@ -86,6 +86,9 @@
     <ClInclude Include="BLETest\U2FTests.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="BleApi\BleApiTypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="COPYRIGHT" />
@@ -93,5 +96,6 @@
     <None Include="Makefile.win" />
     <None Include="README" />
     <None Include="SAMPLELOG" />
+    <None Include="ChangeLog" />
   </ItemGroup>
 </Project>

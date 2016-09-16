@@ -43,6 +43,8 @@ using namespace std;
 #pragma comment(lib, "BluetoothApis.lib")
 #pragma comment(lib, "Bthprops.lib")
 
+#define STRING_RUNTIME_EXCEPTION(x)		std::runtime_error( __FILE__ + std::to_string(__LINE__) + x)
+
 DEFINE_GUID(GUID_BLUETOOTHLE_FIDO_SERVICE, 0x0000FFFD, 0x0000, 0x1000, 0x80,
 	    0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB);
 
@@ -185,9 +187,11 @@ int GetServiceHandle(IN string p_DevInstanceId, OUT HANDLE & p_hService)
 	return BLEAPI_ERROR_NOT_FOUND;
 }
 
- BleApiWindows::BleApiWindows(bool encryption, bool logging):
-BleApi(encryption, logging)
+ BleApiWindows::BleApiWindows(BleApiConfiguration &configuration):
+BleApi(configuration)
 {
+   if (mConfiguration.version != U2FVersion::V1_0)
+     throw STRING_RUNTIME_EXCEPTION("API Version not supported on Legacy Windows Backend.");
 };
 
 BleApiWindows::~BleApiWindows(void)
@@ -271,8 +275,7 @@ std::vector < BleDevice * >BleApiWindows::findDevices()
 		    (BleDevice *) new BleDeviceWindows(this, deviceInstanceId,
 						       devHandle,
 						       serviceHandle,
-						       mEncryption,
-						       mLogging);
+						       mConfiguration);
 		list.push_back(dev);
 		mDeviceList.push_back(dev);
 	}

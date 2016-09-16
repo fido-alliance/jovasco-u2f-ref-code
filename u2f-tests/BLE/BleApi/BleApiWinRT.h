@@ -23,9 +23,9 @@
 #include <string>
 #include <vector>
 
-typedef class BleApiWinRT :BleApi {
+typedef class BleApiWinRT : public BleApi {
 public:
-  BleApiWinRT(bool encryption = true, bool logging = false);
+  BleApiWinRT(BleApiConfiguration &configuration);
   ~BleApiWinRT(void);
 
 public:
