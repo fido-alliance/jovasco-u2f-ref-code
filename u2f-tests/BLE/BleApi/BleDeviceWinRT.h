@@ -34,6 +34,8 @@ public:
   bool hasPath(std::string path);
 
 public:
+  virtual ReturnValue Verify();
+
   virtual ReturnValue ControlPointWrite(unsigned char *buffer,
     unsigned int bufferLength);
   virtual ReturnValue ControlPointLengthRead(unsigned int *length);
@@ -52,6 +54,12 @@ public:
   // version management
   virtual bool SupportsVersion(U2FVersion version);
   virtual bool SelectVersion(U2FVersion version, bool force = false);
+
+  // bluetooth layer interface
+  virtual bool IsConnected();
+  virtual bool IsPaired();
+  virtual bool IsAdvertising();
+  virtual void Report();
 
 protected:
   virtual void Lock();

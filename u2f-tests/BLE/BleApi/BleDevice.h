@@ -44,6 +44,9 @@ typedef class BleDevice {
 	~BleDevice(void);
 
  public:
+   // verify if device matches specs
+   virtual ReturnValue Verify();
+
 	// raw FIDO access
 	 virtual ReturnValue ControlPointWrite(unsigned char *buffer,
 					       unsigned int bufferLength);
@@ -75,6 +78,12 @@ typedef class BleDevice {
   // version management
   virtual bool SupportsVersion(U2FVersion version);
   virtual bool SelectVersion(U2FVersion version, bool force = false);
+
+  // bluetooth layer interface
+  virtual bool IsConnected();
+  virtual bool IsPaired();
+  virtual bool IsAdvertising();
+  virtual void Report();
 
  protected:
 	// routes events and does reassembly for CommandWrite 

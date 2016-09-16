@@ -169,20 +169,23 @@ void Usage(char *name)
 	    <<
 	    " [ -d <device-identifier>] [-l] [-h] [-a] [-v] [-V] [-p] [-e] [-u] [-t] [-w] [-i]"
 	    << std::endl
-	    << "  -h : this text." << std::endl
-	    << "  -a : Do not abort on failed test." << std::endl
-	    << "  -v : Verbose" << std::endl
-	    << "  -V : Even more verbose" << std::endl
-	    << "  -p : Pause at failed test" << std::endl
-	    << "  -u : Disable U2F Raw Message tests. " << std::endl
-	    << "  -t : Disable BLE Transport tests." << std::endl
-	    << "  -i : Disable U2F ISO7816-4 encoding tests." << std::endl
-	    << "  -w : Warnings are treated as errors." << std::endl
-	    << "  -x : Disable encrypted connection requirement." << std::endl
-	    << "  -c : Toggle ANSI colors." << std::endl
-	    << "  -l : Show all known FIDO BLE devices and exit." << std::endl
-	    << "  -d : Select specific FIDO BLE device." << std::endl
-	    << "  -T : turn on BLE level tracing." << std::endl;
+	    << "  -h   : this text." << std::endl
+	    << "  -a   : Do not abort on failed test." << std::endl
+	    << "  -v   : Verbose" << std::endl
+	    << "  -V   : Even more verbose" << std::endl
+	    << "  -p   : Pause at failed test" << std::endl
+	    << "  -u   : Disable U2F Raw Message tests. " << std::endl
+	    << "  -t   : Disable BLE Transport tests." << std::endl
+	    << "  -i   : Disable U2F ISO7816-4 encoding tests." << std::endl
+	    << "  -w   : Warnings are treated as errors." << std::endl
+	    << "  -x   : Disable encrypted connection requirement." << std::endl
+	    << "  -c   : Toggle ANSI colors." << std::endl
+	    << "  -l   : Show all known FIDO BLE devices and exit." << std::endl
+	    << "  -d   : Select specific FIDO BLE device." << std::endl
+	    << "  -T   : turn on BLE level tracing." << std::endl
+      << "  -1.0 : Select U2F Version 1.0" << std::endl
+      << "  -1.1 : Select U2F Version 1.1 (default)" << std::endl
+    ;
 	exit(-1);
 }
 
@@ -246,7 +249,13 @@ int __cdecl main(int argc, char *argv[])
 			// treat warnings as errors
       configuration.logging |= BleApiLogging::Tracing;
 		}
-		if (!strncmp(argv[count], "-d", 2)) {
+    if (!strncmp(argv[count], "-1.0", 4)) {
+      configuration.version = U2FVersion::V1_0;
+    }
+    if (!strncmp(argv[count], "-1.1", 4)) {
+      configuration.version = U2FVersion::V1_1;
+    }
+    if (!strncmp(argv[count], "-d", 2)) {
 			// treat warnings as errors
 			++count;
 			if (count == argc) {
@@ -313,6 +322,10 @@ int __cdecl main(int argc, char *argv[])
 			std::cout << "Running tests on device " <<
 			    dev->Identifier() << std::endl;
 		}
+
+    /* verify device is accordign to spec */
+    dev->Report();
+    dev->Verify();
 
 		/* something to do? */
 		if (!(arg_transport || arg_u2f || arg_iso7816)) {

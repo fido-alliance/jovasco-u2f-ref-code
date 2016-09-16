@@ -49,6 +49,12 @@ BleDevice::~BleDevice(void)
 	mEventHandlerList.clear();
 }
 
+ReturnValue BleDevice::Verify()
+{
+  // don't throw an exception if not implemetned.
+  return ReturnValue::BLEAPI_ERROR_NOT_IMPLEMENTED;
+}
+
 ReturnValue BleDevice::ControlPointWrite(unsigned char *buffer,
 					 unsigned int bufferLength)
 {
@@ -117,6 +123,26 @@ bool BleDevice::SupportsVersion(U2FVersion version)
 }
 
 bool BleDevice::SelectVersion(U2FVersion version, bool force)
+{
+  throw std::exception("Not Implemented.");
+}
+
+bool BleDevice::IsConnected()
+{
+  throw std::exception("Not Implemented.");
+}
+
+bool BleDevice::IsPaired()
+{
+  throw std::exception("Not Implemented.");
+}
+
+bool BleDevice::IsAdvertising()
+{
+  throw std::exception("Not Implemented.");
+}
+
+void BleDevice::Report()
 {
   throw std::exception("Not Implemented.");
 }
