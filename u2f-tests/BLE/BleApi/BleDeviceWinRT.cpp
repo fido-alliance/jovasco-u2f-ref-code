@@ -27,6 +27,7 @@
 #include "fido_ble.h"
 
 #include <BleDeviceWinRT.h>
+#include <BleAdvertisementWinRT.h>
 
 using namespace Platform;
 using namespace Concurrency;
@@ -35,6 +36,7 @@ using namespace Windows::Foundation::Collections;
 using namespace Windows::Devices::Enumeration;
 using namespace Windows::Devices::Bluetooth;
 using namespace Windows::Devices::Bluetooth::GenericAttributeProfile;
+using namespace Windows::Devices::Bluetooth::Advertisement;
 using namespace Windows::Storage::Streams;
 using namespace Windows::Security::Cryptography;
 
@@ -153,9 +155,20 @@ public:
     mDevice->OnNotification(sender, args);
   }
 
+  void OnAdvertisementReceived(BluetoothLEAdvertisementWatcher ^watcher, BluetoothLEAdvertisementReceivedEventArgs ^eventArgs)
+  {
+    mDevice->OnAdvertisementReceived(watcher, eventArgs);
+  }
+
+  void OnAdvertisementWatcherStopped(BluetoothLEAdvertisementWatcher ^watcher, BluetoothLEAdvertisementWatcherStoppedEventArgs ^eventArgs)
+  {
+    mDevice->OnAdvertisementWatcherStopped(watcher, eventArgs);
+  }
+
 private:
   BleDeviceWinRT *mDevice;
 };
+
 
 //
 //  methods
@@ -165,6 +178,7 @@ BleDeviceWinRT::BleDeviceWinRT(pBleApi pBleApi, std::string deviceInstanceId, Wi
   : BleDevice(configuration)
   , mDevice(device)
   , mDeviceInstanceId(deviceInstanceId)
+  , mBluetoothAddress(device->BluetoothAddress)
   , mNotificationsRegistered(false)
   , mCharacteristicControlPointLength(nullptr)
   , mCharacteristicControlPoint(nullptr)
@@ -310,7 +324,7 @@ ReturnValue BleDeviceWinRT::ControlPointWrite(unsigned char * buffer, unsigned i
 
   try {
     // write characteristic
-    GattCommunicationStatus status = create_task(mCharacteristicControlPoint->WriteValueAsync(b, GattWriteOption::WriteWithoutResponse)).get();
+    GattCommunicationStatus status = create_task(mCharacteristicControlPoint->WriteValueAsync(b, GattWriteOption::WriteWithResponse)).get();
     if (status != GattCommunicationStatus::Success)
       return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
   }
@@ -501,8 +515,7 @@ bool BleDeviceWinRT::IsConnected()
 
 bool BleDeviceWinRT::IsPaired()
 {
-  // FIXME always returns true now because we don't support removing and re-adding device during test yet.
-  return true;
+  return (mDevice->DeviceInformation->Pairing->ProtectionLevel > DevicePairingProtectionLevel::None);
 }
 
 bool BleDeviceWinRT::IsAdvertising()
@@ -550,6 +563,46 @@ void BleDeviceWinRT::Report()
   }
 }
 
+ReturnValue BleDeviceWinRT::WaitForDevice(BleAdvertisement *aAdvertisement, BleAdvertisement *aScanResponse)
+{
+  BluetoothLEAdvertisementWatcher watcher;
+  BleDeviceEventhandlerWrapper    wrapper(this);
+
+  // init for event handlers.
+  mReturnAdvertisement = aAdvertisement;
+  mReturnScanResponse = aScanResponse;
+  mAdvReceived = mScanRespReceived = false;
+
+  // register event handlers.
+  auto advRecv = ref new TypedEventHandler<BluetoothLEAdvertisementWatcher^, BluetoothLEAdvertisementReceivedEventArgs^>(%wrapper, &BleDeviceEventhandlerWrapper::OnAdvertisementReceived);
+  auto advStop = ref new TypedEventHandler<BluetoothLEAdvertisementWatcher^, BluetoothLEAdvertisementWatcherStoppedEventArgs^>(%wrapper, &BleDeviceEventhandlerWrapper::OnAdvertisementWatcherStopped);
+  auto advRecvToken = watcher.Received += advRecv;
+  auto advStopToken = watcher.Stopped  += advStop;
+
+  // we want to get scan response packets.
+  watcher.ScanningMode = BluetoothLEScanningMode::Active;
+
+  // start watching.
+  watcher.Start();
+
+  // main wait. Handlers will terminate watcher if advertisement has been collected.
+  while (watcher.Status == BluetoothLEAdvertisementWatcherStatus::Started)
+    Sleep(100);
+
+  // be patient.
+  while (watcher.Status == BluetoothLEAdvertisementWatcherStatus::Stopping)
+    Sleep(25);
+  
+  // cleanup
+  watcher.Received -= advRecvToken;
+  watcher.Stopped  -= advStopToken;
+  mReturnAdvertisement = nullptr;
+  mReturnScanResponse = nullptr;
+  mAdvReceived = mScanRespReceived = false;
+
+  return ReturnValue::BLEAPI_ERROR_SUCCESS;
+}
+
 void BleDeviceWinRT::Lock()
 {
   WaitForSingleObject(mMutex, INFINITE);
@@ -579,3 +632,95 @@ void BleDeviceWinRT::OnNotification(GattCharacteristic^ sender, GattValueChanged
   // pass event to event handlers.
   EventHandler(BleDevice::EVENT_FRAGMENT, a->Data, a->Length);
 }
+
+void BleDeviceWinRT::OnAdvertisementReceived(BluetoothLEAdvertisementWatcher ^watcher, BluetoothLEAdvertisementReceivedEventArgs ^eventArgs)
+{
+  switch (eventArgs->AdvertisementType) {
+    case BluetoothLEAdvertisementType::ConnectableDirected:
+    case BluetoothLEAdvertisementType::ConnectableUndirected:
+    case BluetoothLEAdvertisementType::NonConnectableUndirected:
+    case BluetoothLEAdvertisementType::ScannableUndirected:
+      // already have it.
+      if (mAdvReceived)
+        return;
+
+      // we only accept advertisements from this device.
+      if (eventArgs->BluetoothAddress != mBluetoothAddress)
+        return;
+
+      // set received and record it if required.
+      mAdvReceived = true;
+      if (mReturnAdvertisement)
+        *mReturnAdvertisement = BleAdvertisementWinRT(eventArgs->AdvertisementType, eventArgs->Advertisement);
+
+      break;
+
+    case BluetoothLEAdvertisementType::ScanResponse:
+      // already have it.
+      if (mScanRespReceived)
+        return;
+
+      // we only accept advertisements from this device.
+      if (eventArgs->BluetoothAddress != mBluetoothAddress)
+        return;
+
+      // set received and record it if required.
+      mScanRespReceived = true;
+      if (mReturnScanResponse)
+        *mReturnScanResponse = BleAdvertisementWinRT(eventArgs->AdvertisementType, eventArgs->Advertisement);
+
+      break;
+
+    default:
+      return;
+  }
+
+  // always wait for an advertisement
+  if (!mAdvReceived)
+    return;
+
+  // if user requested scan response data, wait for it.
+  if (mReturnScanResponse && !mScanRespReceived)
+    return;
+
+  watcher->Stop();
+}
+
+void BleDeviceWinRT::OnAdvertisementWatcherStopped(BluetoothLEAdvertisementWatcher ^watcher, BluetoothLEAdvertisementWatcherStoppedEventArgs ^eventArgs)
+{
+  if (eventArgs->Error == BluetoothError::Success)
+    return;
+
+  std::cout << "Bluetooth error ";
+  switch (eventArgs->Error)
+  {
+  case BluetoothError::RadioNotAvailable:
+    std::cout << "The Bluetooth radio was not available. This error occurs when the Bluetooth radio has been turned off.";
+    break;
+  case BluetoothError::ResourceInUse:
+    std::cout << "The operation cannot be serviced because the necessary resources are currently in use.";
+    break;
+  case BluetoothError::DeviceNotConnected:
+    std::cout << "The operation cannot be completed because the remote device is not connected.";
+    break;
+  case BluetoothError::OtherError:
+    std::cout << "An unexpected error has occurred.";
+    break;
+  case BluetoothError::DisabledByPolicy:
+    std::cout << "The operation is disabled by policy.";
+    break;
+  case BluetoothError::NotSupported:
+    std::cout << "The operation is not supported on the current Bluetooth radio hardware.";
+    break;
+  case BluetoothError::DisabledByUser:
+    std::cout << "The operation is disabled by the user.";
+    break;
+  case BluetoothError::ConsentRequired:
+    std::cout << "The operation is not supported on the current Bluetooth radio hardware.";
+    break;
+  default:
+    std::cout << "Unknown Error";
+  }
+}
+
+

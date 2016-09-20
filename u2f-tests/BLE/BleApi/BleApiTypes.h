@@ -31,6 +31,25 @@ typedef enum {
   Tracing = 4,
 } BleApiLogging;
 
+typedef enum {
+  Advertisement = 0,
+  ScanResponse = 1,
+} BleAdvertisementType;
+
+typedef enum {
+  Flags               = 0x01,
+  More16bitUuid       = 0x02,
+  Complete16bitUuid   = 0x03,
+  More32bitUuid       = 0x04,
+  Compelte32bitUuid   = 0x05,
+  More128bitUuid      = 0x06,
+  Compelte128bitUuid  = 0x07,
+  LocalName           = 0x08,
+  LocalNameComplete   = 0x09,
+  TxPowerLevel        = 0x0A,
+  ServiceData         = 0x16,
+} BleAdvertisementSectionType;
+
 typedef class BleApiConfiguration {
 public:
   // set defaults.

@@ -16,8 +16,8 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _BLEAPI_FIDODEVICE_H_
-#define _BLEAPI_FIDODEVICE_H_
+#ifndef _BLEAPI_BLEDEVICE_H_
+#define _BLEAPI_BLEDEVICE_H_
 
 #include <vector>
 
@@ -25,6 +25,7 @@
 
 #include "BleApiTypes.h"
 #include "BleApiError.h"
+#include "BleAdvertisement.h"
 
 typedef class BleDevice {
  public:
@@ -71,7 +72,7 @@ typedef class BleDevice {
 	virtual ReturnValue SetTimeout(uint64_t timeoutms);
 	virtual ReturnValue Sleep(unsigned int miliseconds);
 	virtual uint64_t TimeMs();
-
+  
 	// device Identification
 	virtual std::string Identifier();
 
@@ -85,6 +86,8 @@ typedef class BleDevice {
   virtual bool IsAdvertising();
   virtual void Report();
 
+  virtual ReturnValue WaitForDevice(BleAdvertisement * = nullptr, BleAdvertisement * = nullptr);
+
  protected:
 	// routes events and does reassembly for CommandWrite 
 	 virtual void EventHandler(FIDOEventType type, unsigned char *buffer,
@@ -95,7 +98,8 @@ typedef class BleDevice {
 
  private:
 	// used during CommandWrite
-	 bool mCommandInProgress;
+	bool mCommandInProgress;
+
 	// used during reassembly of reply
 	unsigned char *mReplyBuffer;
 	unsigned int mReplyBufferLength;
@@ -117,4 +121,4 @@ typedef class BleDevice {
   bool mSupportsVersion_1_1;
 } *pBleDevice;
 
-#endif				/* _BLEAPI_FIDODEVICE_H_ */
+#endif				/* _BLEAPI_BLEDEVICE_H_ */

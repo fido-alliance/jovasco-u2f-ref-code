@@ -1,6 +1,8 @@
 // BLETest.cpp : Defines the entry point for the console application.
 //
 
+#include <string>
+
 #include "ble_util.h"
 #include "fido_apduresponses.h"
 
@@ -15,7 +17,6 @@ bool arg_hasButton = false;
 bool arg_u2f = true;
 bool arg_transport = true;
 bool arg_iso7816 = true;
-bool arg_tracing = false;
 
 #define REPLY_BUFFER_LENGTH 256
 static unsigned char reply[REPLY_BUFFER_LENGTH];
@@ -30,22 +31,46 @@ void BleApiTestEventHandler(BleDevice::FIDOEventType type,
 	BleApiTest_TransportEventHandler(type, buffer, bufferLength);
 }
 
-ReturnValue GetBleInterfaceVersion(pBleDevice dev)
+ReturnValue GetBleInterfaceVersion(BleApiConfiguration &configuration, pBleDevice dev, bool silent = false)
 {
 	ReturnValue retval;
 
 	unsigned char version[128];
 	unsigned int len = sizeof(version);
 
-	/* read version */
-	retval = dev->U2FVersionRead(version, &len);
-	if (retval != BLEAPI_ERROR_SUCCESS)
-		return retval;
 
 	/* verify version */
-	CHECK_EQ(memcmp(version, "1.0", 3), 0);
+  switch (configuration.version) {
+  case U2FVersion::V1_0:
+    /* read version */
+    retval = dev->U2FVersionRead(version, &len);
+    if (retval != BLEAPI_ERROR_SUCCESS)
+      return retval;
 
-	INFO << "U2F BLE Version: " << version;
+    CHECK_EQ(memcmp(version, "1.0", 3), 0);
+
+    if (!silent)
+      INFO << "U2F BLE Version: " << std::string((char *)version, 3);
+
+    break;
+
+  case U2FVersion::V1_1:
+    /* read version */
+    retval = dev->U2FVersionBitfieldRead(version, &len);
+    if (retval != BLEAPI_ERROR_SUCCESS)
+      return retval;
+
+    CHECK_EQ((version[FIDO_BLE_VERSIONBITFIELD_VERSION_1_1_OFFSET] & FIDO_BLE_VERSIONBITFIELD_VERSION_1_1_BIT), FIDO_BLE_VERSIONBITFIELD_VERSION_1_1_BIT);
+
+    if (!silent)
+      INFO << "U2F BLE Version: 1.1";
+
+    break;
+
+  default:
+    return BLEAPI_ERROR_NOT_IMPLEMENTED;
+  }
+
 
 	return BLEAPI_ERROR_SUCCESS;
 }
@@ -58,32 +83,60 @@ void pause(const std::string & prompt)
 	printf("\n");
 }
 
-void WaitForUserPresence(pBleDevice dev, bool hasButton)
+void WaitForDeviceDisconnected(BleApiConfiguration &configuration, pBleDevice dev)
+{
+#if defined(PLATFORM_WINDOWS) && defined(FEATURE_WINRT)
+  while (dev->IsConnected()) dev->Sleep(100);
+#endif
+}
+
+void WaitForUserPresence(BleApiConfiguration &configuration, pBleDevice dev)
 {
 	ReturnValue retval;
 
-	pause(std::string(hasButton ? "Touch" : "Turn on") +
-	      " device and hit enter..");
+#if defined(PLATFORM_WINDOWS) && defined(FEATURE_WINRT)
+  if (dev->IsConnected() && dev->IsPaired())
+    return;
 
-	/* check for U2F Interface version */
-	retval = GetBleInterfaceVersion(dev);
-	if (retval != BLEAPI_ERROR_SUCCESS)
-		abort();
+  std::cout << "Turn on device." << std::endl;
+  dev->WaitForDevice();
 
-	/* register for notification to receive data */
-	retval = dev->RegisterNotifications(BleApiTestEventHandler);
-	if (retval != BLEAPI_ERROR_SUCCESS)
-		abort();
+  bool silent = false;
+  do {
+      /* trigger connection */
+    retval = GetBleInterfaceVersion(configuration, dev, silent);
+    silent = true;
+    if (!retval != ReturnValue::BLEAPI_ERROR_SUCCESS)
+      continue;
+  } while (!dev->IsConnected() && dev->IsPaired());
+
+  /* register for notification to receive data */
+  retval = dev->RegisterNotifications(BleApiTestEventHandler);
+  if (retval != ReturnValue::BLEAPI_ERROR_SUCCESS)
+    throw std::runtime_error(__FILE__ ":" + std::to_string(__LINE__) + ": could not register notification although we are connected.");
+#else
+  pause("Turn on device and hit enter..");
+
+  /* check for U2F Interface version */
+  retval = GetBleInterfaceVersion(dev);
+  if (retval != BLEAPI_ERROR_SUCCESS)
+    abort();
+
+  /* register for notification to receive data */
+  retval = dev->RegisterNotifications(BleApiTestEventHandler);
+  if (retval != BLEAPI_ERROR_SUCCESS)
+    abort();
+#endif
 }
 
-ReturnValue BLETransportTests(pBleDevice dev)
+ReturnValue BLETransportTests(BleApiConfiguration &configuration, pBleDevice dev)
 {
 	std::cout << std::endl << "==== BLE Transport tests ====" << std::endl;
 
-	WaitForUserPresence(dev, arg_hasButton);
+	WaitForUserPresence(configuration, dev);
 
 	// set timeout at 30 seconds, just in case devices just doesn't answer.
-	dev->SetTimeout(30000);
+	dev->SetTimeout(60000);
 
 	PASS(BleApiTest_TransportPing(dev));
 	PASS(BleApiTest_TransportLongPing(dev));
@@ -98,11 +151,11 @@ ReturnValue BLETransportTests(pBleDevice dev)
 	return BLEAPI_ERROR_SUCCESS;
 }
 
-ReturnValue U2FISO7816EncodingTests(pBleDevice dev)
+ReturnValue U2FISO7816EncodingTests(BleApiConfiguration &configuration, pBleDevice dev)
 {
 	std::cout << std::endl << "==== BLE ISO7816-4 Encoding tests ====" <<
 	    std::endl;
-	WaitForUserPresence(dev, arg_hasButton);
+	WaitForUserPresence(configuration, dev);
 
 	PASS(BleApiTest_TestEncodingLongAnyLength(dev));
 	PASS(BleApiTest_TestEncodingLongExactLength(dev));
@@ -112,23 +165,26 @@ ReturnValue U2FISO7816EncodingTests(pBleDevice dev)
 	//   Sign command.
 	BleApiTest_Enroll(dev);
 
-	WaitForUserPresence(dev, arg_hasButton);
+  WaitForDeviceDisconnected(configuration, dev);
+	WaitForUserPresence(configuration, dev);
 	PASS(BleApiTest_TestEncodingLongDataAnyLength(dev));
 
-	WaitForUserPresence(dev, arg_hasButton);
+  WaitForDeviceDisconnected(configuration, dev);
+  WaitForUserPresence(configuration, dev);
 	PASS(BleApiTest_TestEncodingLongDataExactLength(dev));
 
-	WaitForUserPresence(dev, arg_hasButton);
+  WaitForDeviceDisconnected(configuration, dev);
+  WaitForUserPresence(configuration, dev);
 	PASS(BleApiTest_TestEncodingLongDataWrongLength(dev));
 
 	return BLEAPI_ERROR_SUCCESS;
 }
 
-ReturnValue U2FTests(pBleDevice dev)
+ReturnValue U2FTests(BleApiConfiguration &configuration, pBleDevice dev)
 {
 	std::cout << std::endl << "==== U2F Raw Message tests ====" << std::
 	    endl;
-	WaitForUserPresence(dev, arg_hasButton);
+	WaitForUserPresence(configuration, dev);
 
 	PASS(BleApiTest_GetU2FProtocolVersion(dev));
 	PASS(BleApiTest_UnknownINS(dev));
@@ -138,7 +194,8 @@ ReturnValue U2FTests(pBleDevice dev)
 
 	PASS(BleApiTest_Enroll(dev));
 
-	WaitForUserPresence(dev, arg_hasButton);
+  WaitForDeviceDisconnected(configuration, dev);
+  WaitForUserPresence(configuration, dev);
 
 	// Sign with wrong kh.
 	PASS(BleApiTest_Sign(dev, FIDO_RESP_WRONG_DATA, false, true, false));
@@ -152,13 +209,17 @@ ReturnValue U2FTests(pBleDevice dev)
 	uint32_t ctr1;
 	PASS(ctr1 = BleApiTest_Sign(dev));
 
-	WaitForUserPresence(dev, arg_hasButton);
+  WaitForDeviceDisconnected(configuration, dev);
+  WaitForUserPresence(configuration, dev);
 
 	uint32_t ctr2;
 	PASS(ctr2 = BleApiTest_Sign(dev));
 
 	// Ctr should have incremented by 1.
 	PASS(ctr2 == (ctr1 + 1));
+
+  // to be sure.
+  WaitForDeviceDisconnected(configuration, dev);
 
 	return BLEAPI_ERROR_SUCCESS;
 }
@@ -201,10 +262,12 @@ int __cdecl main(int argc, char *argv[])
 		if (!strncmp(argv[count], "-v", 2)) {
 			// INFO only
       configuration.logging |= BleApiLogging::Info;
+      arg_Verbose |= 1;
 		}
 		if (!strncmp(argv[count], "-V", 2)) {
 			// INFO only
       configuration.logging |= BleApiLogging::Debug;
+      arg_Verbose |= 2;
     }
 		if (!strncmp(argv[count], "-a", 2)) {
 			// Don't abort, try continue;
@@ -323,7 +386,7 @@ int __cdecl main(int argc, char *argv[])
 		}
     std::cout << std::endl;
 
-    /* verify device is accordign to spec */
+    /* report device details and verify device is according to spec */
     std::cout << "==== Selected Device ====" << std::endl;
     dev->Report();
     dev->Verify();
@@ -366,18 +429,19 @@ int __cdecl main(int argc, char *argv[])
 
 		/* do ble transport tests */
 		if (arg_transport) {
-			if (BLETransportTests(dev) != BLEAPI_ERROR_SUCCESS)
+			if (BLETransportTests(configuration, dev) != BLEAPI_ERROR_SUCCESS)
 				return -1;
 		}
 
 		/* do the u2f tests */
 		if (arg_u2f) {
-			if (U2FTests(dev) != BLEAPI_ERROR_SUCCESS)
+			if (U2FTests(configuration, dev) != BLEAPI_ERROR_SUCCESS)
 				return -1;
 		}
+
 		/* do the iso7816-4 tests */
 		if (arg_iso7816) {
-			if (U2FISO7816EncodingTests(dev) !=
+			if (U2FISO7816EncodingTests(configuration, dev) !=
 			    BLEAPI_ERROR_SUCCESS)
 				return -1;
 

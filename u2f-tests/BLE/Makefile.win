@@ -67,11 +67,11 @@ sha256.obj: core/libmincrypt/sha256.c
 #
 BLEAPIGENERIC_HEADER=BleApi/BleApi.h BleApi/BleApiError.h BleApi/fido_apduresponses.h BleApi/fido_ble.h BleApi/BleDevice.h
 BLEAPIWINDOWS_HEADER=BleApi/BleApiWindows.h BleApi/BleDeviceWindows.h
-BLEAPIWINRT_HEADER=BleApi/BleApiWinRT.h BleApi/BleDeviceWinRT.h
+BLEAPIWINRT_HEADER=BleApi/BleApiWinRT.h BleApi/BleDeviceWinRT.h BleApi/BleAdvertisementWinRT.h
 
-BLEAPIGENERIC=BleApi.obj BleDevice.obj
+BLEAPIGENERIC=BleApi.obj BleDevice.obj BleAdvertisement.obj
 BLEAPIWINDOWS=BleApiWindows.obj  BleDeviceWindows.obj
-BLEAPIWINRT=BleApiWinRT.obj BleDeviceWinRT.obj
+BLEAPIWINRT=BleApiWinRT.obj BleDeviceWinRT.obj BleAdvertisementWinRT.obj
 
 BLEAPI_HEADER=$(BLEAPIGENERIC_HEADER) $(BLEAPIWINDOWS_HEADER) $(BLEAPIWINRT_HEADER)
 BLEAPI=$(BLEAPIGENERIC)
@@ -88,17 +88,25 @@ BleApi.obj: BleApi/BleApi.cpp $(BLEAPI_HEADER)
 BleDevice.obj: BleApi/BleDevice.cpp $(BLEAPI_HEADER)
 	$(CXX) -c $(CFLAGS) BleApi/BleDevice.cpp -Fo$@
 
+BleAdvertisement.obj: BleApi/BleAdvertisement.cpp $(BLEAPI_HEADER)
+	$(CXX) -c $(CFLAGS) BleApi/BleAdvertisement.cpp -Fo$@
+
+
 BleApiWindows.obj: BleApi/BleApiWindows.cpp $(BLEAPI_HEADER)
 	$(CXX) -c $(CFLAGS) BleApi/BleApiWindows.cpp -Fo$@
 
 BleDeviceWindows.obj: BleApi/BleDeviceWindows.cpp $(BLEAPI_HEADER)
 	$(CXX) -c $(CFLAGS) BleApi/BleDeviceWindows.cpp -Fo$@
 
+
 BleApiWinRT.obj: BleApi/BleApiWinRT.cpp $(BLEAPI_HEADER)
 	$(CXX) -c $(CFLAGS) $(CFLAGS_WINRT) BleApi/BleApiWinRT.cpp -Fo$@
 
 BleDeviceWinRT.obj: BleApi/BleDeviceWinRT.cpp $(BLEAPI_HEADER)
 	$(CXX) -c $(CFLAGS) $(CFLAGS_WINRT) BleApi/BleDeviceWinRT.cpp -Fo$@
+
+BleAdvertisementWinRT.obj: BleApi/BleAdvertisementWinRT.cpp $(BLEAPI_HEADER)
+	$(CXX) -c $(CFLAGS) $(CFLAGS_WINRT) BleApi/BleAdvertisementWinRT.cpp -Fo$@
 
 #
 ##  Some utilities

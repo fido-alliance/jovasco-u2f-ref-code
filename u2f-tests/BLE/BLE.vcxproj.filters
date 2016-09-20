@@ -45,6 +45,12 @@
     <ClCompile Include="BLETest\U2FTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="BleApi\BleAdvertisement.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BleApi\BleAdvertisementWinRT.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ble_util\ble_util.h">
@@ -87,6 +93,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="BleApi\BleApiTypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BleApi\BleAdvertisement.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BleApi\BleAdvertisementWinRT.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

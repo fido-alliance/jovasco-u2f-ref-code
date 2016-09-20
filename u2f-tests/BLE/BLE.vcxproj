@@ -19,6 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="BleApi\BleAdvertisement.cpp" />
+    <ClCompile Include="BleApi\BleAdvertisementWinRT.cpp" />
     <ClCompile Include="BleApi\BleApi.cpp" />
     <ClCompile Include="BleApi\BleApiWindows.cpp" />
     <ClCompile Include="BleApi\BleApiWinRT.cpp" />
@@ -31,6 +33,8 @@
     <ClCompile Include="ble_util\ble_util.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BleApi\BleAdvertisement.h" />
+    <ClInclude Include="BleApi\BleAdvertisementWinRT.h" />
     <ClInclude Include="BleApi\BleApi.h" />
     <ClInclude Include="BleApi\BleApiError.h" />
     <ClInclude Include="BleApi\BleApiTypes.h" />

@@ -61,27 +61,36 @@ public:
   virtual bool IsAdvertising();
   virtual void Report();
 
+  virtual ReturnValue WaitForDevice(BleAdvertisement *, BleAdvertisement *);
+
 protected:
   virtual void Lock();
   virtual void UnLock();
 
   virtual void OnNotification(Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic^ sender, Windows::Devices::Bluetooth::GenericAttributeProfile::GattValueChangedEventArgs^ args);
+  virtual void OnAdvertisementReceived(Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementWatcher ^watcher, Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementReceivedEventArgs ^eventArgs);
+  virtual void OnAdvertisementWatcherStopped(Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementWatcher ^watcher, Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementWatcherStoppedEventArgs ^eventArgs);
   friend ref class BleDeviceEventhandlerWrapper;
 
 protected:
   std::string mDeviceInstanceId;
+  uint64_t  mBluetoothAddress; /* used by WaitForDevice, even while mDevice is not valid */
   HANDLE mMutex;
   bool mNotificationsRegistered;
   Windows::Foundation::EventRegistrationToken mRegistrationToken;
   ref class BleDeviceEventhandlerWrapper  ^mEHWrapper;
+
+  bool mAdvReceived, mScanRespReceived;
+  BleAdvertisement *mReturnAdvertisement;
+  BleAdvertisement *mReturnScanResponse;
 
   std::vector<pEventHandler>  mNotificationHandlers;
   Windows::Devices::Bluetooth::BluetoothLEDevice ^mDevice;
   Windows::Devices::Bluetooth::GenericAttributeProfile::GattDeviceService ^mService;
   Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic
     ^mCharacteristicControlPointLength, ^mCharacteristicControlPoint,
-    ^mCharacteristicStatus,
-    ^mCharacteristicVersion, ^mCharacteristicVersionBitfield;
+    ^mCharacteristicStatus, ^mCharacteristicVersion, ^mCharacteristicVersionBitfield;
+
 };
 
 #endif				/* _BLEAPI_BLEDEVICEWINRT_H_ */

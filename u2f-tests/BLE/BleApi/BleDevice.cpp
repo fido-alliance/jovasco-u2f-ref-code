@@ -147,6 +147,24 @@ void BleDevice::Report()
   throw std::exception("Not Implemented.");
 }
 
+ReturnValue BleDevice::WaitForDevice(BleAdvertisement *, BleAdvertisement *)
+{
+  ReturnValue retval;
+  unsigned char version[128];
+  unsigned int len = sizeof(version);
+
+  do {
+    printf("\n%s", "Turn on device and hit enter..");
+    getchar();
+    printf("\n");
+
+    /* check for U2F Interface version */
+    retval = U2FVersionRead(version, &len);
+  } while (retval != ReturnValue::BLEAPI_ERROR_SUCCESS);
+
+  return ReturnValue::BLEAPI_ERROR_SUCCESS;
+}
+
 void BleDevice::Lock()
 {
 	throw std::exception("Not Implemented.");
