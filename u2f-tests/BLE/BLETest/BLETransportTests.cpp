@@ -205,7 +205,7 @@ ReturnValue BleApiTest_TransportLimits(pBleDevice dev)
 	}
 	while (replyCmd == FIDO_BLE_CMD_PING);
 
-  INFO << "Waiting to let all errors end.";
+  INFO << "Waiting to make sure all error replies are received before we continue.";
 	dev->Sleep(2000);
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
@@ -383,7 +383,7 @@ ReturnValue BleApiTest_TransportTooLong(pBleDevice dev)
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
-ReturnValue BleApiTest_AdvertisingNotPairingMode(pBleDevice dev)
+ReturnValue BleApiTest_AdvertisingNotPairingMode(pBleDevice dev, bool &servicedata_present)
 {
   // if we don't support V1.1, this test is not applicable.
   if (!dev->SupportsVersion(U2FVersion::V1_1))
@@ -404,6 +404,7 @@ ReturnValue BleApiTest_AdvertisingNotPairingMode(pBleDevice dev)
   // in pairing mode this needs to be non-zero
   CHECK_EQ(flags[0] & (BleFlagFields::LEGeneralDiscoverabilityMode | BleFlagFields::LELimitedDiscoverabilityMode), 0);
 
+  servicedata_present = false;
   // check optional service data field
   const auto servicedata = adv->GetSection(BleAdvertisementSectionType::ServiceData);
   if (servicedata.empty())
@@ -413,6 +414,9 @@ ReturnValue BleApiTest_AdvertisingNotPairingMode(pBleDevice dev)
   if (!((servicedata[0] == 0xFF) && (servicedata[1] == 0xFD)))
     return ReturnValue::BLEAPI_ERROR_SUCCESS;
 
+  INFO << "Service Data field present." << std::endl;
+  servicedata_present = true;
+
   unsigned char serviceflags = servicedata[3];
   // not pairing mode, flag must be off.
   CHECK_EQ(serviceflags & FIDO_BLE_SERVICEDATA_PAIRINGMODE, 0);
@@ -420,7 +424,7 @@ ReturnValue BleApiTest_AdvertisingNotPairingMode(pBleDevice dev)
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
-ReturnValue BleApiTest_AdvertisingPairingMode(pBleDevice dev)
+ReturnValue BleApiTest_AdvertisingPairingMode(pBleDevice dev, bool &servicedata_present)
 {
   // if we don't support V1.1, this test is not applicable.
   if (!dev->SupportsVersion(U2FVersion::V1_1))
@@ -441,14 +445,18 @@ ReturnValue BleApiTest_AdvertisingPairingMode(pBleDevice dev)
   // in pairing mode this needs to be non-zero
   CHECK_NE(flags[0] & (BleFlagFields::LEGeneralDiscoverabilityMode | BleFlagFields::LELimitedDiscoverabilityMode), 0);
 
+  servicedata_present = false;
   // check optional service data field
-  const auto servicedata = adv->GetSection(BleAdvertisementSectionType::ServiceData);
+  const auto servicedata = scanresp->GetSection(BleAdvertisementSectionType::ServiceData);
   if (servicedata.empty())
     return ReturnValue::BLEAPI_ERROR_SUCCESS;
 
   // check if it is fido service data
   if (!((servicedata[0] == 0xFF) && (servicedata[1] == 0xFD)))
     return ReturnValue::BLEAPI_ERROR_SUCCESS;
+
+  INFO << "Service Data field present." << std::endl;
+  servicedata_present = true;
 
   unsigned char serviceflags = servicedata[3];
   // pairing mode, flag must be on

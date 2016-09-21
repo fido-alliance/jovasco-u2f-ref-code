@@ -325,8 +325,11 @@ ReturnValue BleDeviceWinRT::ControlPointWrite(unsigned char * buffer, unsigned i
   try {
     // write characteristic
     GattCommunicationStatus status = create_task(mCharacteristicControlPoint->WriteValueAsync(b, GattWriteOption::WriteWithResponse)).get();
-    if (status != GattCommunicationStatus::Success)
+    if (status != GattCommunicationStatus::Success) {
+      if (mConfiguration.logging & BleApiLogging::Debug)
+        std::cout << "Error: " << status.ToString()->Data() << std::endl;
       return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+    }
   }
   catch (std::exception &e)
   {
