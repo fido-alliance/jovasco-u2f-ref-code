@@ -19,7 +19,14 @@
 #ifndef _BLEAPI_BLEAPIERROR_H_
 #define _BLEAPI_BLEAPIERROR_H_
 
-typedef enum {
+// we need a C++11 compiler. MSVC2015 supports this but not C++11.
+#if (__cplusplus >= 201103L)||(_MSC_VER >= 1700)
+#define _ENUM_CLASS_  class
+#else
+#define _ENUM_CLASS_
+#endif
+
+typedef enum _ENUM_CLASS_ ReturnValue {
 	BLEAPI_ERROR_SUCCESS = 0,
 	BLEAPI_ERROR_UNKNOWN_ERROR,
 	BLEAPI_ERROR_NOT_IMPLEMENTED,
@@ -32,5 +39,7 @@ typedef enum {
 	BLEAPI_ERROR_NOT_FOUND,
 	BLEAPI_ERROR_TIMEOUT,
 } ReturnValue;
+
+inline bool operator!(ReturnValue r) { return (r != ReturnValue::BLEAPI_ERROR_SUCCESS); };
 
 #endif				/* _BLEAPI_BLEAPIERROR_H_ */

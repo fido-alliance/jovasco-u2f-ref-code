@@ -59,9 +59,11 @@ public:
   virtual bool IsConnected();
   virtual bool IsPaired();
   virtual bool IsAdvertising();
+  virtual bool IsAuthenticated();
+
   virtual void Report();
 
-  virtual ReturnValue WaitForDevice(BleAdvertisement *, BleAdvertisement *);
+  virtual ReturnValue WaitForDevice(BleAdvertisement **, BleAdvertisement **);
 
 protected:
   virtual void Lock();
@@ -81,8 +83,8 @@ protected:
   ref class BleDeviceEventhandlerWrapper  ^mEHWrapper;
 
   bool mAdvReceived, mScanRespReceived;
-  BleAdvertisement *mReturnAdvertisement;
-  BleAdvertisement *mReturnScanResponse;
+  BleAdvertisement **mReturnAdvertisement;
+  BleAdvertisement **mReturnScanResponse;
 
   std::vector<pEventHandler>  mNotificationHandlers;
   Windows::Devices::Bluetooth::BluetoothLEDevice ^mDevice;

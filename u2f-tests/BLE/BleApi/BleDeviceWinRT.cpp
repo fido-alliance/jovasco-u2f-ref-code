@@ -74,7 +74,7 @@ static const Guid FIDO_CHARACTERISTIC_CONTROLPOINTLENGTH_GUID(0xF1D0FFF3, 0xDEAA
 static const Guid FIDO_CHARACTERISTIC_CONTROLPOINT_GUID(0xF1D0FFF1, 0xDEAA, 0xECEE, 0xB4, 0x2F, 0xC9, 0xBA, 0x7E, 0xD6, 0x23, 0xBB);
 static const Guid FIDO_CHARACTERISTIC_STATUS_GUID(0xF1D0FFF2, 0xDEAA, 0xECEE, 0xB4, 0x2F, 0xC9, 0xBA, 0x7E, 0xD6, 0x23, 0xBB);
 static const Guid FIDO_CHARACTERISTIC_VERSION_GUID(0x00002A28, 0x0000, 0x1000, 0x80, 0x00, 0x00,0x80,0x5F, 0x9B, 0x34, 0xFB);
-static const Guid FIDO_CHARACTERISTIC_VERSIONBITFIELD_GUID(0xF1D0FFF4, 0xDEAA, 0xECEE, 0xB4, 0x2F, 0xC9, 0xBA, 0x7E, 0xD6, 0x23, 0xB);
+static const Guid FIDO_CHARACTERISTIC_VERSIONBITFIELD_GUID(0xF1D0FFF4, 0xDEAA, 0xECEE, 0xB4, 0x2F, 0xC9, 0xBA, 0x7E, 0xD6, 0x23, 0xBB);
 
 static std::string bytes2ascii(const unsigned char *ptr, int len)
 {
@@ -135,7 +135,7 @@ ReturnValue ReadCharacteristic(GattCharacteristic ^characteristic, unsigned char
 
   // convert to C++ data.
   ReturnValue retval = ConvertFromIBuffer(result->Value, buffer, bufferLength);
-  if (retval)
+  if (!retval)
     return retval;
 
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
@@ -282,7 +282,7 @@ ReturnValue BleDeviceWinRT::Verify()
     v10version = true;
   }
 
-  if (mCharacteristicVersionBitfield) {
+  if (mCharacteristicVersionBitfield != nullptr) {
     CHECK_CHARACTERISTIC_PROPERTY_SET(mCharacteristicVersionBitfield, Read);
     CHECK_CHARACTERISTIC_PROPERTY_SET(mCharacteristicVersionBitfield, Write);
     v11version = true;
@@ -350,7 +350,7 @@ ReturnValue BleDeviceWinRT::ControlPointLengthRead(unsigned int * length)
 
     // convert to C++ data.
     retval = ConvertFromIBuffer(result->Value, buffer, bufferLength);
-    if (retval)
+    if (!retval)
       return retval;
   }
   catch (std::exception &e)
@@ -383,7 +383,7 @@ ReturnValue BleDeviceWinRT::U2FVersionRead(unsigned char * buffer, unsigned int 
 
   // convert to C++ data.
   retval = ConvertFromIBuffer(result->Value, buffer, *bufferLength);
-  if (retval)
+  if (!retval)
     return retval;
 
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
@@ -400,7 +400,7 @@ ReturnValue BleDeviceWinRT::U2FVersionBitfieldRead(unsigned char * buffer, unsig
 
   // convert to C++ data.
   retval = ConvertFromIBuffer(result->Value, buffer, *bufferLength);
-  if (retval)
+  if (!retval)
     return retval;
 
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
@@ -409,7 +409,7 @@ ReturnValue BleDeviceWinRT::U2FVersionBitfieldRead(unsigned char * buffer, unsig
 ReturnValue BleDeviceWinRT::RegisterNotifications(pEventHandler eventHandler)
 {
   ReturnValue retval = BleDevice::RegisterNotifications(eventHandler);
-  if (retval != BLEAPI_ERROR_SUCCESS)
+  if (!retval)
     return retval;
 
   if (!mNotificationsRegistered) {
@@ -441,7 +441,7 @@ ReturnValue BleDeviceWinRT::Sleep(unsigned int miliseconds)
 {
   ::Sleep(miliseconds);
 
-  return BLEAPI_ERROR_SUCCESS;
+  return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
 uint64_t BleDeviceWinRT::TimeMs()
@@ -523,6 +523,11 @@ bool BleDeviceWinRT::IsAdvertising()
   return false;
 }
 
+bool BleDeviceWinRT::IsAuthenticated()
+{
+  return (mDevice->DeviceInformation->Pairing->ProtectionLevel == DevicePairingProtectionLevel::EncryptionAndAuthentication);
+}
+
 void BleDeviceWinRT::Report()
 {
   std::wcout << L"Device Display Name: " << mDevice->Name->Data() << std::endl;
@@ -539,8 +544,13 @@ void BleDeviceWinRT::Report()
 
   unsigned char buffer[512];
   unsigned int bufferLength;
-  GattDeviceService ^dis = mDevice->GetGattService(GattServiceUuids::DeviceInformation);
-  if (dis != nullptr) {
+  GattDeviceService ^dis;
+  
+  try {
+    dis = mDevice->GetGattService(GattServiceUuids::DeviceInformation);
+    if (dis != nullptr)
+      return;
+
     auto manufacturerNameString = dis->GetCharacteristics(GattCharacteristicUuids::ManufacturerNameString);
     if (manufacturerNameString && (manufacturerNameString->Size > 0)) {
       bufferLength = sizeof(buffer);
@@ -560,10 +570,13 @@ void BleDeviceWinRT::Report()
       if (ReadCharacteristic(firmwareRevisionString->GetAt(0), buffer, bufferLength) == ReturnValue::BLEAPI_ERROR_SUCCESS)
         std::cout << "Firmware Revision  : " << std::string((char *)buffer, bufferLength) << std::endl;
     }
+  } catch (...) {
+    if (!dis && (mConfiguration.version == U2FVersion::V1_1))
+      throw STRING_RUNTIME_EXCEPTION("Could not read Device Information Service.");
   }
 }
 
-ReturnValue BleDeviceWinRT::WaitForDevice(BleAdvertisement *aAdvertisement, BleAdvertisement *aScanResponse)
+ReturnValue BleDeviceWinRT::WaitForDevice(BleAdvertisement **aAdvertisement, BleAdvertisement **aScanResponse)
 {
   BluetoothLEAdvertisementWatcher watcher;
   BleDeviceEventhandlerWrapper    wrapper(this);
@@ -651,7 +664,7 @@ void BleDeviceWinRT::OnAdvertisementReceived(BluetoothLEAdvertisementWatcher ^wa
       // set received and record it if required.
       mAdvReceived = true;
       if (mReturnAdvertisement)
-        *mReturnAdvertisement = BleAdvertisementWinRT(eventArgs->AdvertisementType, eventArgs->Advertisement);
+        *mReturnAdvertisement = new BleAdvertisementWinRT(eventArgs->AdvertisementType, eventArgs->Advertisement);
 
       break;
 
@@ -667,7 +680,7 @@ void BleDeviceWinRT::OnAdvertisementReceived(BluetoothLEAdvertisementWatcher ^wa
       // set received and record it if required.
       mScanRespReceived = true;
       if (mReturnScanResponse)
-        *mReturnScanResponse = BleAdvertisementWinRT(eventArgs->AdvertisementType, eventArgs->Advertisement);
+        *mReturnScanResponse = new BleAdvertisementWinRT(eventArgs->AdvertisementType, eventArgs->Advertisement);
 
       break;
 

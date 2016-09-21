@@ -44,7 +44,7 @@ ReturnValue GetBleInterfaceVersion(BleApiConfiguration &configuration, pBleDevic
   case U2FVersion::V1_0:
     /* read version */
     retval = dev->U2FVersionRead(version, &len);
-    if (retval != BLEAPI_ERROR_SUCCESS)
+    if (!retval)
       return retval;
 
     CHECK_EQ(memcmp(version, "1.0", 3), 0);
@@ -57,7 +57,7 @@ ReturnValue GetBleInterfaceVersion(BleApiConfiguration &configuration, pBleDevic
   case U2FVersion::V1_1:
     /* read version */
     retval = dev->U2FVersionBitfieldRead(version, &len);
-    if (retval != BLEAPI_ERROR_SUCCESS)
+    if (!retval)
       return retval;
 
     CHECK_EQ((version[FIDO_BLE_VERSIONBITFIELD_VERSION_1_1_OFFSET] & FIDO_BLE_VERSIONBITFIELD_VERSION_1_1_BIT), FIDO_BLE_VERSIONBITFIELD_VERSION_1_1_BIT);
@@ -68,11 +68,10 @@ ReturnValue GetBleInterfaceVersion(BleApiConfiguration &configuration, pBleDevic
     break;
 
   default:
-    return BLEAPI_ERROR_NOT_IMPLEMENTED;
+    return ReturnValue::BLEAPI_ERROR_NOT_IMPLEMENTED;
   }
 
-
-	return BLEAPI_ERROR_SUCCESS;
+	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
 static
@@ -101,16 +100,20 @@ void WaitForUserPresence(BleApiConfiguration &configuration, pBleDevice dev)
   std::cout << "Turn on device." << std::endl;
   dev->WaitForDevice();
 
+  if ((configuration.logging & BleApiLogging::Info) != 0)
+    std::cout << "Connecting to device..." << std::endl;
   bool silent = false;
   do {
       /* trigger connection */
     retval = GetBleInterfaceVersion(configuration, dev, silent);
     silent = true;
-    if (!retval != ReturnValue::BLEAPI_ERROR_SUCCESS)
+    if (!retval)
       continue;
   } while (!dev->IsConnected() && dev->IsPaired());
 
   /* register for notification to receive data */
+  if ((configuration.logging & BleApiLogging::Info) != 0)
+    std::cout << "Registering notifications... " << std::endl;
   retval = dev->RegisterNotifications(BleApiTestEventHandler);
   if (retval != ReturnValue::BLEAPI_ERROR_SUCCESS)
     throw std::runtime_error(__FILE__ ":" + std::to_string(__LINE__) + ": could not register notification although we are connected.");
@@ -119,12 +122,12 @@ void WaitForUserPresence(BleApiConfiguration &configuration, pBleDevice dev)
 
   /* check for U2F Interface version */
   retval = GetBleInterfaceVersion(dev);
-  if (retval != BLEAPI_ERROR_SUCCESS)
+  if (!retval)
     abort();
 
   /* register for notification to receive data */
   retval = dev->RegisterNotifications(BleApiTestEventHandler);
-  if (retval != BLEAPI_ERROR_SUCCESS)
+  if (!retval)
     abort();
 #endif
 }
@@ -136,7 +139,7 @@ ReturnValue BLETransportTests(BleApiConfiguration &configuration, pBleDevice dev
 	WaitForUserPresence(configuration, dev);
 
 	// set timeout at 30 seconds, just in case devices just doesn't answer.
-	dev->SetTimeout(60000);
+	dev->SetTimeout(30000);
 
 	PASS(BleApiTest_TransportPing(dev));
 	PASS(BleApiTest_TransportLongPing(dev));
@@ -148,7 +151,12 @@ ReturnValue BLETransportTests(BleApiConfiguration &configuration, pBleDevice dev
 	PASS(BleApiTest_TransportContFirst(dev));
 	PASS(BleApiTest_TransportTooLong(dev));
 
-	return BLEAPI_ERROR_SUCCESS;
+  //std::cout << "Waiting until device disconnects..." << std::endl;
+
+  //WaitForDeviceDisconnected(configuration, dev);
+
+
+	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
 ReturnValue U2FISO7816EncodingTests(BleApiConfiguration &configuration, pBleDevice dev)
@@ -177,7 +185,7 @@ ReturnValue U2FISO7816EncodingTests(BleApiConfiguration &configuration, pBleDevi
   WaitForUserPresence(configuration, dev);
 	PASS(BleApiTest_TestEncodingLongDataWrongLength(dev));
 
-	return BLEAPI_ERROR_SUCCESS;
+	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
 ReturnValue U2FTests(BleApiConfiguration &configuration, pBleDevice dev)
@@ -198,22 +206,22 @@ ReturnValue U2FTests(BleApiConfiguration &configuration, pBleDevice dev)
   WaitForUserPresence(configuration, dev);
 
 	// Sign with wrong kh.
-	PASS(BleApiTest_Sign(dev, FIDO_RESP_WRONG_DATA, false, true, false));
+	PASS(BleApiTest_Sign(dev, NULL, FIDO_RESP_WRONG_DATA, false, true, false));
 
 	// Sign with wrong AppID.
-	PASS(BleApiTest_Sign(dev, FIDO_RESP_WRONG_DATA, false, false, true));
+	PASS(BleApiTest_Sign(dev, NULL, FIDO_RESP_WRONG_DATA, false, false, true));
 
 	// Sign with check only should not produce signature.
-	PASS(BleApiTest_Sign(dev, FIDO_RESP_USERPRESENCE_REQUIRED, true));
+	PASS(BleApiTest_Sign(dev, NULL, FIDO_RESP_USERPRESENCE_REQUIRED, true));
 
 	uint32_t ctr1;
-	PASS(ctr1 = BleApiTest_Sign(dev));
+	PASS(BleApiTest_Sign(dev, &ctr1));
 
   WaitForDeviceDisconnected(configuration, dev);
   WaitForUserPresence(configuration, dev);
 
 	uint32_t ctr2;
-	PASS(ctr2 = BleApiTest_Sign(dev));
+	PASS(BleApiTest_Sign(dev, &ctr2));
 
 	// Ctr should have incremented by 1.
 	PASS(ctr2 == (ctr1 + 1));
@@ -221,7 +229,7 @@ ReturnValue U2FTests(BleApiConfiguration &configuration, pBleDevice dev)
   // to be sure.
   WaitForDeviceDisconnected(configuration, dev);
 
-	return BLEAPI_ERROR_SUCCESS;
+	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
 void Usage(char *name)
@@ -409,7 +417,7 @@ int __cdecl main(int argc, char *argv[])
     std::cout << std::endl;
     std::cout << "Encryption : " << (configuration.encrypt ? "Yes" : "No") << std::endl;
     std::cout << "Adaptive   : " << (configuration.adaptive? "Yes" : "No") << std::endl;
-    std::cout << "Logging    : " << (configuration.logging ? "Yes" : "No") << std::endl;
+    std::cout << "Logging    : " << (configuration.logging & BleApiLogging::Info ? "Info " : "") << (configuration.logging & BleApiLogging::Debug ? "Debug " : "") << (configuration.logging & BleApiLogging::Tracing ? "Tracing" : "") << std::endl;
     std::cout << std::endl;
 
     /* something to do? */
@@ -427,22 +435,24 @@ int __cdecl main(int argc, char *argv[])
 		/* check that link encryption is enabled */
 		WARN_EQ(configuration.encrypt, true);
 
+
+    std::cout << "=== Starting Tests === " << std::endl;
+
 		/* do ble transport tests */
 		if (arg_transport) {
-			if (BLETransportTests(configuration, dev) != BLEAPI_ERROR_SUCCESS)
+			if (!BLETransportTests(configuration, dev))
 				return -1;
 		}
 
 		/* do the u2f tests */
 		if (arg_u2f) {
-			if (U2FTests(configuration, dev) != BLEAPI_ERROR_SUCCESS)
+			if (!U2FTests(configuration, dev))
 				return -1;
 		}
 
 		/* do the iso7816-4 tests */
 		if (arg_iso7816) {
-			if (U2FISO7816EncodingTests(configuration, dev) !=
-			    BLEAPI_ERROR_SUCCESS)
+			if (!U2FISO7816EncodingTests(configuration, dev))
 				return -1;
 
 		}

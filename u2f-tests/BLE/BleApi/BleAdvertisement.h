@@ -27,6 +27,7 @@ typedef class BleAdvertisement {
 protected:
   BleAdvertisement(BleAdvertisementType type);
 
+public:
   const std::vector<unsigned char> GetSection(BleAdvertisementSectionType);
 
 protected:

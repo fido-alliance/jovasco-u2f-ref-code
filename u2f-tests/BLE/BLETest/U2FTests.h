@@ -24,7 +24,7 @@ extern ReturnValue BleApiTest_BadCLA(pBleDevice dev);
 extern ReturnValue BleApiTest_VersionWrongLength(pBleDevice dev);
 extern ReturnValue BleApiTest_RegisterWrongLength(pBleDevice dev);
 extern ReturnValue BleApiTest_Enroll(pBleDevice dev, int expectedSW12 = 0x9000);
-extern uint32_t BleApiTest_Sign(pBleDevice dev, int expectedSW12 =
+extern ReturnValue BleApiTest_Sign(pBleDevice dev, uint32_t *ctr = nullptr, int expectedSW12 =
 				0x9000, bool checkOnly = false, bool corruptKH =
 				false, bool corruptAddId = false);
 

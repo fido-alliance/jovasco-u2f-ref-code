@@ -36,9 +36,9 @@ ReturnValue WaitForEvent(pBleDevice dev, unsigned int timeout)
 	}
 
 	if (!eventDone)
-		return BLEAPI_ERROR_TIMEOUT;
+		return ReturnValue::BLEAPI_ERROR_TIMEOUT;
 
-	return BLEAPI_ERROR_SUCCESS;
+	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
 void BleApiTest_TransportEventHandler(BleDevice::FIDOEventType type,
@@ -78,7 +78,7 @@ ReturnValue BleApiTest_TransportPing(pBleDevice dev)
 	retval =
 	    dev->CommandWrite(FIDO_BLE_CMD_PING, request, requestLength,
 			      &replyCmd, reply, &replyLength);
-	CHECK_EQ(retval, BLEAPI_ERROR_SUCCESS);
+	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
 	received = (float)dev->TimeMs();
 	INFO << "Sent " << requestLength << " bytes in " << (received -
@@ -89,7 +89,7 @@ ReturnValue BleApiTest_TransportPing(pBleDevice dev)
 	CHECK_EQ(replyLength, requestLength);
 	CHECK_EQ(memcmp(request, reply, requestLength), 0);
 
-	return BLEAPI_ERROR_SUCCESS;
+	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
 ReturnValue BleApiTest_TransportUnknown(pBleDevice dev, unsigned char cmd)
@@ -114,7 +114,7 @@ ReturnValue BleApiTest_TransportUnknown(pBleDevice dev, unsigned char cmd)
 	retval =
 	    dev->CommandWrite(cmd, request, requestLength, &replyCmd, reply,
 			      &replyLength);
-	CHECK_EQ(retval, BLEAPI_ERROR_SUCCESS);
+	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
 	received = (float)dev->TimeMs();
 	INFO << "Sent cmd 0x" << std::hex << (int)cmd << std::dec << " with " <<
@@ -124,7 +124,7 @@ ReturnValue BleApiTest_TransportUnknown(pBleDevice dev, unsigned char cmd)
 	WARN_EQ(replyLength, 1);
 	WARN_EQ(reply[0], ERR_INVALID_CMD);
 
-	return BLEAPI_ERROR_SUCCESS;
+	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
 ReturnValue BleApiTest_TransportLongPing(pBleDevice dev)
@@ -146,14 +146,14 @@ ReturnValue BleApiTest_TransportLongPing(pBleDevice dev)
 	retval =
 	    dev->CommandWrite(FIDO_BLE_CMD_PING, request, requestLength,
 			      &replyCmd, reply, &replyLength);
-	CHECK_EQ(retval, BLEAPI_ERROR_SUCCESS);
+	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
 	received = (float)dev->TimeMs();
 	INFO << "Sent " << requestLength << " bytes in " << (received -
 							     sent) /
 	    1000.0 << "s.";
 
-	return BLEAPI_ERROR_SUCCESS;
+	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
 #define LIMITS_MAXLENGTH		((1 << 16))
@@ -182,7 +182,7 @@ ReturnValue BleApiTest_TransportLimits(pBleDevice dev)
 		retval =
 		    dev->CommandWrite(FIDO_BLE_CMD_PING, request, requestLength,
 				      &replyCmd, reply, &replyLength);
-		CHECK_EQ(retval, BLEAPI_ERROR_SUCCESS);
+		CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
 		received = (float)dev->TimeMs();
 
@@ -205,9 +205,10 @@ ReturnValue BleApiTest_TransportLimits(pBleDevice dev)
 	}
 	while (replyCmd == FIDO_BLE_CMD_PING);
 
-	dev->Sleep(1000);
+  INFO << "Waiting to let all errors end.";
+	dev->Sleep(2000);
 
-	return BLEAPI_ERROR_SUCCESS;
+	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
 ReturnValue BleApiTest_TransportNotCont(pBleDevice dev)
@@ -219,7 +220,7 @@ ReturnValue BleApiTest_TransportNotCont(pBleDevice dev)
 
 	// get control point length
 	retval = dev->ControlPointLengthRead(&cpl);
-	CHECK_EQ(retval, BLEAPI_ERROR_SUCCESS);
+	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
 	eventDone = false;
 
@@ -232,16 +233,16 @@ ReturnValue BleApiTest_TransportNotCont(pBleDevice dev)
 
 	// send first INIT frame
 	retval = dev->ControlPointWrite(request, cpl);
-	CHECK_EQ(retval, BLEAPI_ERROR_SUCCESS);
+	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
 	// no reply expected
 
 	// send INIT frame again while CONT is expected
 	retval = dev->ControlPointWrite(request, cpl);
-	CHECK_EQ(retval, BLEAPI_ERROR_SUCCESS);
+	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
 	retval = WaitForEvent(dev, 10000);
-	CHECK_EQ(retval, BLEAPI_ERROR_SUCCESS);
+	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
 	// check if this is error reply
 	CHECK_EQ(fragmentReplyBuffer[0], FIDO_BLE_CMD_ERROR);
@@ -254,7 +255,7 @@ ReturnValue BleApiTest_TransportNotCont(pBleDevice dev)
 	// check invalid seq error
 	WARN_EQ(fragmentReplyBuffer[3], ERR_INVALID_SEQ);
 
-	return BLEAPI_ERROR_SUCCESS;
+	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
 ReturnValue BleApiTest_TransportBadSequence(pBleDevice dev)
@@ -266,7 +267,7 @@ ReturnValue BleApiTest_TransportBadSequence(pBleDevice dev)
 
 	// get control point length
 	retval = dev->ControlPointLengthRead(&cpl);
-	CHECK_EQ(retval, BLEAPI_ERROR_SUCCESS);
+	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
 	eventDone = false;
 
@@ -282,17 +283,17 @@ ReturnValue BleApiTest_TransportBadSequence(pBleDevice dev)
 
 	// send first INIT frame
 	retval = dev->ControlPointWrite(request, cpl);
-	CHECK_EQ(retval, BLEAPI_ERROR_SUCCESS);
+	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
 	// no reply expected
 
 	// send CONT frame with bad sequence number
 	retval = dev->ControlPointWrite(request + cpl, cpl);
-	CHECK_EQ(retval, BLEAPI_ERROR_SUCCESS);
+	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
 	// wait upto 10 seconds for a reply.
 	retval = WaitForEvent(dev, 10000);
-	CHECK_EQ(retval, BLEAPI_ERROR_SUCCESS);
+	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
 	// check if this is error reply
 	CHECK_EQ(fragmentReplyBuffer[0], FIDO_BLE_CMD_ERROR);
@@ -305,7 +306,7 @@ ReturnValue BleApiTest_TransportBadSequence(pBleDevice dev)
 	// check invalid seq error
 	WARN_EQ(fragmentReplyBuffer[3], ERR_INVALID_SEQ);
 
-	return BLEAPI_ERROR_SUCCESS;
+	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
 ReturnValue BleApiTest_TransportContFirst(pBleDevice dev)
@@ -317,7 +318,7 @@ ReturnValue BleApiTest_TransportContFirst(pBleDevice dev)
 
 	// get control point length
 	retval = dev->ControlPointLengthRead(&cpl);
-	CHECK_EQ(retval, BLEAPI_ERROR_SUCCESS);
+	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
 	eventDone = false;
 
@@ -326,11 +327,11 @@ ReturnValue BleApiTest_TransportContFirst(pBleDevice dev)
 
 	// send CONT frame
 	retval = dev->ControlPointWrite(request, cpl);
-	CHECK_EQ(retval, BLEAPI_ERROR_SUCCESS);
+	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
 	// wait upto 10 seconds for a reply.
 	retval = WaitForEvent(dev, 10000);
-	CHECK_EQ(retval, BLEAPI_ERROR_SUCCESS);
+	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
 	// check if this is error reply
 	CHECK_EQ(fragmentReplyBuffer[0], FIDO_BLE_CMD_ERROR);
@@ -344,7 +345,7 @@ ReturnValue BleApiTest_TransportContFirst(pBleDevice dev)
 	// check invalid seq error
 	WARN_EQ(fragmentReplyBuffer[3], ERR_INVALID_SEQ);
 
-	return BLEAPI_ERROR_SUCCESS;
+	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
 ReturnValue BleApiTest_TransportTooLong(pBleDevice dev)
@@ -356,17 +357,17 @@ ReturnValue BleApiTest_TransportTooLong(pBleDevice dev)
 
 	// get control point length
 	retval = dev->ControlPointLengthRead(&cpl);
-	CHECK_EQ(retval, BLEAPI_ERROR_SUCCESS);
+	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
 	eventDone = false;
 
 	// send INIT frame with too much data
 	retval = dev->ControlPointWrite(request, cpl);
-	CHECK_EQ(retval, BLEAPI_ERROR_SUCCESS);
+	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
 	// wait upto 10 seconds for a reply.
 	retval = WaitForEvent(dev, 10000);
-	CHECK_EQ(retval, BLEAPI_ERROR_SUCCESS);
+	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
 	// check if this is error reply
 	CHECK_EQ(fragmentReplyBuffer[0], FIDO_BLE_CMD_ERROR);
@@ -379,5 +380,83 @@ ReturnValue BleApiTest_TransportTooLong(pBleDevice dev)
 	// check invalid seq error
 	WARN_EQ(fragmentReplyBuffer[3], ERR_INVALID_LEN);
 
-	return BLEAPI_ERROR_SUCCESS;
+	return ReturnValue::BLEAPI_ERROR_SUCCESS;
+}
+
+ReturnValue BleApiTest_AdvertisingNotPairingMode(pBleDevice dev)
+{
+  // if we don't support V1.1, this test is not applicable.
+  if (!dev->SupportsVersion(U2FVersion::V1_1))
+    return ReturnValue::BLEAPI_ERROR_SUCCESS;
+
+  // collect advertisement and scan response.
+  BleAdvertisement *adv, *scanresp;
+  ReturnValue retval = dev->WaitForDevice(&adv, &scanresp);
+  if (!retval)
+    return retval;
+
+  // check flags
+  const auto flags = adv->GetSection(BleAdvertisementSectionType::Flags);
+
+  // check if fields is present.
+  CHECK_EQ(flags.empty(), false);
+    
+  // in pairing mode this needs to be non-zero
+  CHECK_EQ(flags[0] & (BleFlagFields::LEGeneralDiscoverabilityMode | BleFlagFields::LELimitedDiscoverabilityMode), 0);
+
+  // check optional service data field
+  const auto servicedata = adv->GetSection(BleAdvertisementSectionType::ServiceData);
+  if (servicedata.empty())
+    return ReturnValue::BLEAPI_ERROR_SUCCESS;
+
+  // check if it is fido service data
+  if (!((servicedata[0] == 0xFF) && (servicedata[1] == 0xFD)))
+    return ReturnValue::BLEAPI_ERROR_SUCCESS;
+
+  unsigned char serviceflags = servicedata[3];
+  // not pairing mode, flag must be off.
+  CHECK_EQ(serviceflags & FIDO_BLE_SERVICEDATA_PAIRINGMODE, 0);
+
+  return ReturnValue::BLEAPI_ERROR_SUCCESS;
+}
+
+ReturnValue BleApiTest_AdvertisingPairingMode(pBleDevice dev)
+{
+  // if we don't support V1.1, this test is not applicable.
+  if (!dev->SupportsVersion(U2FVersion::V1_1))
+    return ReturnValue::BLEAPI_ERROR_SUCCESS;
+
+  // collect advertisement and scan response.
+  BleAdvertisement *adv, *scanresp;
+  ReturnValue retval = dev->WaitForDevice(&adv, &scanresp);
+  if (!retval)
+    return retval;
+
+  // check flags
+  const auto flags = adv->GetSection(BleAdvertisementSectionType::Flags);
+
+  // check if fields is present.
+  CHECK_EQ(flags.empty(), false);
+
+  // in pairing mode this needs to be non-zero
+  CHECK_NE(flags[0] & (BleFlagFields::LEGeneralDiscoverabilityMode | BleFlagFields::LELimitedDiscoverabilityMode), 0);
+
+  // check optional service data field
+  const auto servicedata = adv->GetSection(BleAdvertisementSectionType::ServiceData);
+  if (servicedata.empty())
+    return ReturnValue::BLEAPI_ERROR_SUCCESS;
+
+  // check if it is fido service data
+  if (!((servicedata[0] == 0xFF) && (servicedata[1] == 0xFD)))
+    return ReturnValue::BLEAPI_ERROR_SUCCESS;
+
+  unsigned char serviceflags = servicedata[3];
+  // pairing mode, flag must be on
+  CHECK_EQ(serviceflags & FIDO_BLE_SERVICEDATA_PAIRINGMODE, FIDO_BLE_SERVICEDATA_PAIRINGMODE);
+
+  // pairing mode, authenticated. Should require a PIN (or OOB).
+  if (dev->IsAuthenticated())
+    CHECK_EQ(serviceflags & FIDO_BLE_SERVICEDATA_PASSKEYENTRY, FIDO_BLE_SERVICEDATA_PASSKEYENTRY);
+
+  return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }

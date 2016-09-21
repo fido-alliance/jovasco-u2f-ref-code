@@ -91,7 +91,7 @@ ReturnValue BleDevice::RegisterNotifications(pEventHandler eventHandler)
 {
 	mEventHandlerList.push_back(eventHandler);
 
-	return BLEAPI_ERROR_SUCCESS;
+	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
 uint64_t BleDevice::TimeMs()
@@ -102,7 +102,7 @@ uint64_t BleDevice::TimeMs()
 ReturnValue BleDevice::SetTimeout(uint64_t timeoutms)
 {
 	mTimeout = timeoutms;
-	return BLEAPI_ERROR_SUCCESS;
+	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
 // device Identification
@@ -142,12 +142,17 @@ bool BleDevice::IsAdvertising()
   throw std::exception("Not Implemented.");
 }
 
+bool BleDevice::IsAuthenticated()
+{
+  throw std::exception("Not Implemented.");
+}
+
 void BleDevice::Report()
 {
   throw std::exception("Not Implemented.");
 }
 
-ReturnValue BleDevice::WaitForDevice(BleAdvertisement *, BleAdvertisement *)
+ReturnValue BleDevice::WaitForDevice(BleAdvertisement **, BleAdvertisement **)
 {
   ReturnValue retval;
   unsigned char version[128];
@@ -182,7 +187,7 @@ ReturnValue BleDevice::CommandWrite(unsigned char cmd, unsigned char *buffer,
 				    unsigned char *reply,
 				    unsigned int *replyLength)
 {
-	ReturnValue retval = BLEAPI_ERROR_SUCCESS;
+	ReturnValue retval = ReturnValue::BLEAPI_ERROR_SUCCESS;
 	unsigned int controlPointLength, i, sequence, offset, l;
 	uint64_t start;
 
@@ -193,7 +198,7 @@ ReturnValue BleDevice::CommandWrite(unsigned char cmd, unsigned char *buffer,
 		mReplyBuffer = reply;
 		mReplyBufferLength = *replyLength;
 		mReceived = 0;
-		mReplyRetval = BLEAPI_ERROR_SUCCESS;
+		mReplyRetval = ReturnValue::BLEAPI_ERROR_SUCCESS;
 		mReplyCmd = replyCmd;
 		mReplyErrorMessage = NULL;
 	}
@@ -201,7 +206,7 @@ ReturnValue BleDevice::CommandWrite(unsigned char cmd, unsigned char *buffer,
 
 	// fetch the controlpoint length
 	retval = ControlPointLengthRead(&controlPointLength);
-	if (retval != BLEAPI_ERROR_SUCCESS)
+	if (retval != ReturnValue::BLEAPI_ERROR_SUCCESS)
 		return retval;
 
 	// get a buffer
@@ -238,7 +243,7 @@ ReturnValue BleDevice::CommandWrite(unsigned char cmd, unsigned char *buffer,
 
 		// write to ControlPoint
 		retval = ControlPointWrite(segment, l + offset);
-		if (retval != BLEAPI_ERROR_SUCCESS)
+		if (retval != ReturnValue::BLEAPI_ERROR_SUCCESS)
 			break;
 
 		// header for next packet
@@ -249,7 +254,7 @@ ReturnValue BleDevice::CommandWrite(unsigned char cmd, unsigned char *buffer,
 
 	delete segment;
 
-	if (retval != BLEAPI_ERROR_SUCCESS)
+	if (retval != ReturnValue::BLEAPI_ERROR_SUCCESS)
 		return retval;
 
 	// wait for reply
@@ -265,12 +270,12 @@ ReturnValue BleDevice::CommandWrite(unsigned char cmd, unsigned char *buffer,
 	// in case of timeout
 	if (mCommandInProgress) {
 		mCommandInProgress = false;
-		return BLEAPI_ERROR_TIMEOUT;
+		return ReturnValue::BLEAPI_ERROR_TIMEOUT;
 	}
 	// success.
 	*replyLength = mReceived;
 
-	if (mReplyRetval != BLEAPI_ERROR_SUCCESS)
+	if (!mReplyRetval)
 		throw(std::exception(mReplyErrorMessage));
 
 	return mReplyRetval;
@@ -296,7 +301,7 @@ void BleDevice::EventHandler(BleDevice::FIDOEventType type,
 		//
 		// first packet of reply needs init flag set
 		if ((buffer[0] & TYPE_MASK) != TYPE_INIT) {
-			mReplyRetval = BLEAPI_ERROR_BAD_REPLY;
+			mReplyRetval = ReturnValue::BLEAPI_ERROR_BAD_REPLY;
 			mCommandInProgress = false;
 			mReplyErrorMessage = "First packet is not TYPE_INIT";
 			goto leave;
@@ -312,7 +317,7 @@ void BleDevice::EventHandler(BleDevice::FIDOEventType type,
 
 		// check reported length
 		if (mExpected > mReplyBufferLength) {
-			mReplyRetval = BLEAPI_ERROR_BUFFER_TOO_SMALL;
+			mReplyRetval = ReturnValue::BLEAPI_ERROR_BUFFER_TOO_SMALL;
 			mCommandInProgress = false;
 			mReplyErrorMessage = "More bytes sent than expected.";
 			goto leave;
@@ -324,21 +329,21 @@ void BleDevice::EventHandler(BleDevice::FIDOEventType type,
 	} else {
 		// ignore keep-alive for now.
 		if (buffer[0] == FIDO_BLE_CMD_KEEPALIVE) {
-			mReplyRetval = BLEAPI_ERROR_BAD_REPLY;
+			mReplyRetval = ReturnValue::BLEAPI_ERROR_BAD_REPLY;
 			mCommandInProgress = false;
 			mReplyErrorMessage = "Keep-alive during reply.";
 			goto leave;
 		}
 		// verify init flag absent
 		if ((buffer[0] & TYPE_MASK) != TYPE_CONT) {
-			mReplyRetval = BLEAPI_ERROR_BAD_REPLY;
+			mReplyRetval = ReturnValue::BLEAPI_ERROR_BAD_REPLY;
 			mCommandInProgress = false;
 			mReplyErrorMessage = "Follow up packet not TYPE_CONT.";
 			goto leave;
 		}
 		// verify sequence number
 		if (buffer[0] != mSequence++) {
-			mReplyRetval = BLEAPI_ERROR_BAD_SEQUENCE;
+			mReplyRetval = ReturnValue::BLEAPI_ERROR_BAD_SEQUENCE;
 			mCommandInProgress = false;
 			mReplyErrorMessage = "Bad sequence.";
 			goto leave;
@@ -351,7 +356,7 @@ void BleDevice::EventHandler(BleDevice::FIDOEventType type,
 
 	// verify the length of the buffer returned.
 	if (l > (mExpected - mReceived)) {
-		mReplyRetval = BLEAPI_ERROR_REPLY_TOO_LONG;
+		mReplyRetval = ReturnValue::BLEAPI_ERROR_REPLY_TOO_LONG;
 		mCommandInProgress = false;
 		mReplyErrorMessage = "Reply is too long.";
 		goto leave;
@@ -365,7 +370,7 @@ void BleDevice::EventHandler(BleDevice::FIDOEventType type,
 
 	// complete?
 	if (mReceived == mExpected) {
-		mReplyRetval = BLEAPI_ERROR_SUCCESS;
+		mReplyRetval = ReturnValue::BLEAPI_ERROR_SUCCESS;
 		mCommandInProgress = false;
 	}
 

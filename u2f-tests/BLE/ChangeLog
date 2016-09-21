@@ -1,5 +1,12 @@
 
 U2F V1.1:
+
+1.1.0-beta2:
+* switch to using enum class and !operator for ReturnValue 
+* Increase timeout after transportlimits test.
+* allow for absent DIS on V1.0
+
+1.1.0-beta1
 * Automatically detect if device is connected or not in WinRT backend.
 * Add receiving of Advertisements.
 * Add WinRT backend

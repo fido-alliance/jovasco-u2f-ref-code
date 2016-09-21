@@ -50,6 +50,11 @@ typedef enum {
   ServiceData         = 0x16,
 } BleAdvertisementSectionType;
 
+typedef enum {
+  LELimitedDiscoverabilityMode = 0x01,
+  LEGeneralDiscoverabilityMode = 0x02,
+} BleFlagFields;
+
 typedef class BleApiConfiguration {
 public:
   // set defaults.

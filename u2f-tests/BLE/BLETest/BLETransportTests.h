@@ -34,5 +34,7 @@ extern ReturnValue BleApiTest_TransportNotCont(pBleDevice dev);
 extern ReturnValue BleApiTest_TransportBadSequence(pBleDevice dev);
 extern ReturnValue BleApiTest_TransportContFirst(pBleDevice dev);
 extern ReturnValue BleApiTest_TransportTooLong(pBleDevice dev);
+extern ReturnValue BleApiTest_AdvertisingNotPairingMode(pBleDevice dev);
+extern ReturnValue BleApiTest_AdvertisingPairingMode(pBleDevice dev);
 
 #endif
