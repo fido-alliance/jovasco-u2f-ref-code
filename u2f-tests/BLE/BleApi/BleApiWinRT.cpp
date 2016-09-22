@@ -109,7 +109,7 @@ std::vector<BleDevice*> BleApiWinRT::findDevices()
     unsigned int j, m;
     std::string id = mDeviceList[i]->Identifier();
 
-    // if they aren't in the new list, there have disappeared.
+    // if they aren't in the new list, they have disappeared.
     for (j = 0, m = (unsigned int) list.size(); j < m; j++) {
       if (!((BleDeviceWinRT *)list[j])->hasPath(id))
         continue;

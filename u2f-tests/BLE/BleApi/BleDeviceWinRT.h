@@ -61,9 +61,13 @@ public:
   virtual bool IsAdvertising();
   virtual bool IsAuthenticated();
 
+  virtual ReturnValue Unpair();
+  virtual ReturnValue Pair();
+
   virtual void Report();
 
-  virtual ReturnValue WaitForDevice(BleAdvertisement **, BleAdvertisement **);
+  virtual ReturnValue WaitForDevice(BleAdvertisement ** = nullptr, BleAdvertisement ** = nullptr);
+  virtual ReturnValue WaitForAdvertisementStop();
 
 protected:
   virtual void Lock();
@@ -72,7 +76,9 @@ protected:
   virtual void OnNotification(Windows::Devices::Bluetooth::GenericAttributeProfile::GattCharacteristic^ sender, Windows::Devices::Bluetooth::GenericAttributeProfile::GattValueChangedEventArgs^ args);
   virtual void OnAdvertisementReceived(Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementWatcher ^watcher, Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementReceivedEventArgs ^eventArgs);
   virtual void OnAdvertisementWatcherStopped(Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementWatcher ^watcher, Windows::Devices::Bluetooth::Advertisement::BluetoothLEAdvertisementWatcherStoppedEventArgs ^eventArgs);
-  friend ref class BleDeviceEventhandlerWrapper;
+  virtual void OnCustomPairing(Windows::Devices::Enumeration::DeviceInformationCustomPairing ^pairing, Windows::Devices::Enumeration::DevicePairingRequestedEventArgs ^eventArgs);
+
+  friend ref class BleDeviceEventhandlerProxy;
 
 protected:
   std::string mDeviceInstanceId;
@@ -80,9 +86,11 @@ protected:
   HANDLE mMutex;
   bool mNotificationsRegistered;
   Windows::Foundation::EventRegistrationToken mRegistrationToken;
-  ref class BleDeviceEventhandlerWrapper  ^mEHWrapper;
+  ref class BleDeviceEventhandlerProxy  ^mEHWrapper;
 
-  bool mAdvReceived, mScanRespReceived;
+  // the next block if for advertisement processing and always accessed under lock.
+  bool mAdvReceived, mScanRespReceived, mDetectOnly;
+  uint64_t  mAdvCount;
   BleAdvertisement **mReturnAdvertisement;
   BleAdvertisement **mReturnScanResponse;
 

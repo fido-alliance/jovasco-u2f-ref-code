@@ -19,6 +19,8 @@
 #ifndef _BLEAPI_BLEAPITYPES_H_
 #define _BLEAPI_BLEAPITYPES_H_
 
+#include <string>
+
 typedef enum {
   V1_0,
   V1_1,
@@ -58,8 +60,9 @@ typedef enum {
 typedef class BleApiConfiguration {
 public:
   // set defaults.
-  BleApiConfiguration() : version (V1_1), logging(Default), encrypt(true), adaptive(false) {};
+  BleApiConfiguration() : version (V1_1), logging(Default), encrypt(true), adaptive(false), pin("") {};
 
+  std::string     pin;      // PIN code to use for pairing.
   U2FVersion      version;  // U2F version used by the API
   unsigned int    logging;  // enable detailed logging
   bool            encrypt;  // enable link encryption

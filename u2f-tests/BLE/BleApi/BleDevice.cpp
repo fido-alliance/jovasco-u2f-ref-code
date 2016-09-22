@@ -147,6 +147,16 @@ bool BleDevice::IsAuthenticated()
   throw std::exception("Not Implemented.");
 }
 
+ReturnValue BleDevice::Unpair()
+{
+  throw std::exception("Not Implemented.");
+}
+
+ReturnValue BleDevice::Pair()
+{
+  throw std::exception("Not Implemented.");
+}
+
 void BleDevice::Report()
 {
   throw std::exception("Not Implemented.");
@@ -168,6 +178,11 @@ ReturnValue BleDevice::WaitForDevice(BleAdvertisement **, BleAdvertisement **)
   } while (retval != ReturnValue::BLEAPI_ERROR_SUCCESS);
 
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
+}
+
+ReturnValue BleDevice::WaitForAdvertisementStop()
+{
+  throw std::exception("Not Implemented.");
 }
 
 void BleDevice::Lock()

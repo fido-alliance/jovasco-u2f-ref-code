@@ -23,6 +23,8 @@
 #include <iostream>
 #include <iomanip>
 #include <stdexcept>
+#include <locale>
+#include <codecvt>
 
 #include "fido_ble.h"
 
@@ -118,6 +120,14 @@ ReturnValue ConvertFromIBuffer(IBuffer ^incoming, unsigned char *buffer, unsigne
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
+std::wstring convert(std::string s)
+{
+  using convert_type = std::codecvt_utf8<wchar_t>;
+  std::wstring_convert<convert_type, wchar_t> converter;
+
+  return converter.from_bytes(s);
+}
+
 //
 // A small function to read a characteristic to a C++ buffer
 // 
@@ -142,12 +152,13 @@ ReturnValue ReadCharacteristic(GattCharacteristic ^characteristic, unsigned char
 }
 
 //
-//  A small class to wrap our C++ notification handler in a CX notification handler.
+//  A small class to proxy our C++ event handler in a CX event handler.
+//    you cannot pass C++ functions to CX classes.
 //
-ref class BleDeviceEventhandlerWrapper sealed
+ref class BleDeviceEventhandlerProxy sealed
 {
 internal:
-  BleDeviceEventhandlerWrapper(BleDeviceWinRT *dev) : mDevice(dev) {};
+  BleDeviceEventhandlerProxy(BleDeviceWinRT *dev) : mDevice(dev) {};
 
 public:
   void OnNotification(GattCharacteristic^ sender, GattValueChangedEventArgs^ args)
@@ -165,6 +176,11 @@ public:
     mDevice->OnAdvertisementWatcherStopped(watcher, eventArgs);
   }
 
+  void OnCustomPairing(DeviceInformationCustomPairing ^pairing, DevicePairingRequestedEventArgs ^eventArgs)
+  {
+    mDevice->OnCustomPairing(pairing, eventArgs);
+  }
+
 private:
   BleDeviceWinRT *mDevice;
 };
@@ -180,6 +196,7 @@ BleDeviceWinRT::BleDeviceWinRT(pBleApi pBleApi, std::string deviceInstanceId, Wi
   , mDeviceInstanceId(deviceInstanceId)
   , mBluetoothAddress(device->BluetoothAddress)
   , mNotificationsRegistered(false)
+  , mService(nullptr)
   , mCharacteristicControlPointLength(nullptr)
   , mCharacteristicControlPoint(nullptr)
   , mCharacteristicStatus(nullptr)
@@ -243,6 +260,9 @@ bool BleDeviceWinRT::hasPath(std::string path)
 
 ReturnValue BleDeviceWinRT::Verify()
 {
+  if (mDevice == nullptr)
+    throw STRING_RUNTIME_EXCEPTION("Device not initialized.");
+  
   try {
     GattDeviceService ^dis = mDevice->GetGattService(GattServiceUuids::DeviceInformation);
     if (dis == nullptr)
@@ -315,6 +335,9 @@ ReturnValue BleDeviceWinRT::Verify()
 
 ReturnValue BleDeviceWinRT::ControlPointWrite(unsigned char * buffer, unsigned int bufferLength)
 {
+  if ((mDevice == nullptr)||(mCharacteristicControlPoint = nullptr))
+    throw STRING_RUNTIME_EXCEPTION("Device not initialized.");
+
   IBuffer ^b = ConvertToIBuffer(buffer, bufferLength);
 
   if (mConfiguration.logging & BleApiLogging::Tracing)
@@ -341,6 +364,9 @@ ReturnValue BleDeviceWinRT::ControlPointWrite(unsigned char * buffer, unsigned i
 
 ReturnValue BleDeviceWinRT::ControlPointLengthRead(unsigned int * length)
 {
+  if ((mDevice == nullptr)||(mCharacteristicControlPointLength == nullptr))
+    throw STRING_RUNTIME_EXCEPTION("Device not initialized.");
+
   ReturnValue retval;
   unsigned char buffer[512];
   unsigned int bufferLength = sizeof (buffer);
@@ -377,6 +403,9 @@ ReturnValue BleDeviceWinRT::ControlPointLengthRead(unsigned int * length)
 
 ReturnValue BleDeviceWinRT::U2FVersionRead(unsigned char * buffer, unsigned int * bufferLength)
 {
+  if ((mDevice == nullptr)||(mCharacteristicVersion == nullptr))
+    throw STRING_RUNTIME_EXCEPTION("Device not initialized.");
+
   ReturnValue retval;
 
   // read characteristic
@@ -394,7 +423,8 @@ ReturnValue BleDeviceWinRT::U2FVersionRead(unsigned char * buffer, unsigned int 
 
 ReturnValue BleDeviceWinRT::U2FVersionBitfieldRead(unsigned char * buffer, unsigned int * bufferLength)
 {
-  ReturnValue retval;
+  if ((mDevice == nullptr)||(mCharacteristicVersionBitfield == nullptr))
+    throw STRING_RUNTIME_EXCEPTION("Device not initialized.");
 
   // read characteristic
   GattReadResult ^result = create_task(mCharacteristicVersionBitfield->ReadValueAsync()).get();
@@ -402,7 +432,7 @@ ReturnValue BleDeviceWinRT::U2FVersionBitfieldRead(unsigned char * buffer, unsig
     return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
 
   // convert to C++ data.
-  retval = ConvertFromIBuffer(result->Value, buffer, *bufferLength);
+  ReturnValue retval = ConvertFromIBuffer(result->Value, buffer, *bufferLength);
   if (!retval)
     return retval;
 
@@ -411,14 +441,17 @@ ReturnValue BleDeviceWinRT::U2FVersionBitfieldRead(unsigned char * buffer, unsig
 
 ReturnValue BleDeviceWinRT::RegisterNotifications(pEventHandler eventHandler)
 {
+  if ((mDevice == nullptr)||(mCharacteristicStatus == nullptr))
+    throw STRING_RUNTIME_EXCEPTION("Device not initialized.");
+
   ReturnValue retval = BleDevice::RegisterNotifications(eventHandler);
   if (!retval)
     return retval;
 
   if (!mNotificationsRegistered) {
-    mEHWrapper = ref new BleDeviceEventhandlerWrapper(this);
+    mEHWrapper = ref new BleDeviceEventhandlerProxy(this);
     auto eh = ref new TypedEventHandler<GattCharacteristic^, GattValueChangedEventArgs^>(
-      mEHWrapper, &BleDeviceEventhandlerWrapper::OnNotification
+      mEHWrapper, &BleDeviceEventhandlerProxy::OnNotification
       );
 
     mRegistrationToken = mCharacteristicStatus->ValueChanged += eh;
@@ -466,6 +499,10 @@ bool BleDeviceWinRT::SupportsVersion(U2FVersion version)
   if (version == U2FVersion::V1_0)
     return mSupportsVersion_1_0;
 
+  // cached.
+  if ((version == U2FVersion::V1_1) && mSupportsVersion_1_1)
+    return mSupportsVersion_1_1;
+
   // check the bitfield characteristic.
   ReturnValue retval = U2FVersionBitfieldRead(buffer, &bufferLength);
   if (retval != ReturnValue::BLEAPI_ERROR_SUCCESS)
@@ -485,8 +522,10 @@ bool BleDeviceWinRT::SupportsVersion(U2FVersion version)
     if (bufferLength < FIDO_BLE_VERSIONBITFIELD_VERSION_1_1_OFFSET)
       return false;
 
-    if (buffer[FIDO_BLE_VERSIONBITFIELD_VERSION_1_1_OFFSET] & FIDO_BLE_VERSIONBITFIELD_VERSION_1_1_BIT)
+    if (buffer[FIDO_BLE_VERSIONBITFIELD_VERSION_1_1_OFFSET] & FIDO_BLE_VERSIONBITFIELD_VERSION_1_1_BIT) {
+      mSupportsVersion_1_1 = true;
       return true;
+    }
 
     return false;
   default:
@@ -507,28 +546,103 @@ bool BleDeviceWinRT::SelectVersion(U2FVersion version, bool force)
     return false;
   
   // now we write the characteristic.
+  // FIXME
 
   return true;
 }
 
 bool BleDeviceWinRT::IsConnected()
 {
+  if (mDevice == nullptr)
+    return false;
+
   return (mDevice->ConnectionStatus == BluetoothConnectionStatus::Connected);
 }
 
 bool BleDeviceWinRT::IsPaired()
 {
+  if (mDevice == nullptr)
+    return false;
+
   return (mDevice->DeviceInformation->Pairing->ProtectionLevel > DevicePairingProtectionLevel::None);
 }
 
 bool BleDeviceWinRT::IsAdvertising()
 {
+  if (mDevice == nullptr)
+    throw STRING_RUNTIME_EXCEPTION("Device not initialized.");
+
   return false;
 }
 
 bool BleDeviceWinRT::IsAuthenticated()
 {
+  if (mDevice == nullptr)
+    throw STRING_RUNTIME_EXCEPTION("Device not initialized.");
+
   return (mDevice->DeviceInformation->Pairing->ProtectionLevel == DevicePairingProtectionLevel::EncryptionAndAuthentication);
+}
+
+ReturnValue BleDeviceWinRT::Unpair()
+{
+  if ((mDevice == nullptr) || !mDevice->DeviceInformation->Pairing->IsPaired)
+    return ReturnValue::BLEAPI_ERROR_SUCCESS;
+
+  DeviceUnpairingResult ^result = create_task(mDevice->DeviceInformation->Pairing->UnpairAsync()).get();
+  if (result->Status != DeviceUnpairingResultStatus::Unpaired)
+    return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;;
+  
+  mDevice = nullptr;
+  mService = nullptr;
+  mCharacteristicControlPointLength = nullptr;
+  mCharacteristicControlPoint = nullptr;
+  mCharacteristicStatus = nullptr;
+  mCharacteristicVersion = nullptr;
+  mCharacteristicVersionBitfield = nullptr;
+
+  mNotificationsRegistered = false;
+  mEHWrapper = nullptr;
+
+  return ReturnValue::BLEAPI_ERROR_SUCCESS;
+}
+
+ReturnValue BleDeviceWinRT::Pair()
+{
+  if ((mDevice != nullptr) && mDevice->DeviceInformation->Pairing->IsPaired)
+    return ReturnValue::BLEAPI_ERROR_SUCCESS;
+
+  if (mDevice == nullptr) {
+    mDevice = create_task(BluetoothLEDevice::FromBluetoothAddressAsync(mBluetoothAddress)).get();
+    if (!mDevice)
+      return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+  }
+
+  // register event handler
+  BleDeviceEventhandlerProxy    wrapper(this);
+  auto pairingEventHandler = ref new TypedEventHandler<DeviceInformationCustomPairing^, DevicePairingRequestedEventArgs^>(%wrapper, &BleDeviceEventhandlerProxy::OnCustomPairing);
+  auto pairingToken = mDevice->DeviceInformation->Pairing->Custom->PairingRequested += pairingEventHandler;
+
+  // wait until we detect the device
+  WaitForDevice();
+
+  DevicePairingResult ^result = create_task(mDevice->DeviceInformation->Pairing->Custom->PairAsync(
+      // support all pairing kinds.
+      DevicePairingKinds::ConfirmOnly | DevicePairingKinds::ConfirmPinMatch | DevicePairingKinds::DisplayPin | DevicePairingKinds::ProvidePin,
+      // require at least encryption.
+      DevicePairingProtectionLevel::Encryption
+    )).get();
+  if (result->Status != DevicePairingResultStatus::Paired) {
+    if ((mConfiguration.logging & BleApiLogging::Debug) != 0)
+      std::wcout << L"Pairing failed with: " << result->Status.ToString()->Data() << std::endl;
+    mDevice->DeviceInformation->Pairing->Custom->PairingRequested -= pairingToken;
+    mDevice = nullptr;
+    return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+  }
+
+  // clean up event handler.
+  mDevice->DeviceInformation->Pairing->Custom->PairingRequested -= pairingToken;
+
+  return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
 void BleDeviceWinRT::Report()
@@ -582,16 +696,18 @@ void BleDeviceWinRT::Report()
 ReturnValue BleDeviceWinRT::WaitForDevice(BleAdvertisement **aAdvertisement, BleAdvertisement **aScanResponse)
 {
   BluetoothLEAdvertisementWatcher watcher;
-  BleDeviceEventhandlerWrapper    wrapper(this);
+  BleDeviceEventhandlerProxy    wrapper(this);
+
+  Lock();
 
   // init for event handlers.
   mReturnAdvertisement = aAdvertisement;
   mReturnScanResponse = aScanResponse;
-  mAdvReceived = mScanRespReceived = false;
+  mAdvReceived = mScanRespReceived = mDetectOnly = false;
 
   // register event handlers.
-  auto advRecv = ref new TypedEventHandler<BluetoothLEAdvertisementWatcher^, BluetoothLEAdvertisementReceivedEventArgs^>(%wrapper, &BleDeviceEventhandlerWrapper::OnAdvertisementReceived);
-  auto advStop = ref new TypedEventHandler<BluetoothLEAdvertisementWatcher^, BluetoothLEAdvertisementWatcherStoppedEventArgs^>(%wrapper, &BleDeviceEventhandlerWrapper::OnAdvertisementWatcherStopped);
+  auto advRecv = ref new TypedEventHandler<BluetoothLEAdvertisementWatcher^, BluetoothLEAdvertisementReceivedEventArgs^>(%wrapper, &BleDeviceEventhandlerProxy::OnAdvertisementReceived);
+  auto advStop = ref new TypedEventHandler<BluetoothLEAdvertisementWatcher^, BluetoothLEAdvertisementWatcherStoppedEventArgs^>(%wrapper, &BleDeviceEventhandlerProxy::OnAdvertisementWatcherStopped);
   auto advRecvToken = watcher.Received += advRecv;
   auto advStopToken = watcher.Stopped  += advStop;
 
@@ -602,13 +718,19 @@ ReturnValue BleDeviceWinRT::WaitForDevice(BleAdvertisement **aAdvertisement, Ble
   watcher.Start();
 
   // main wait. Handlers will terminate watcher if advertisement has been collected.
-  while (watcher.Status == BluetoothLEAdvertisementWatcherStatus::Started)
+  while (watcher.Status == BluetoothLEAdvertisementWatcherStatus::Started) {
+    UnLock();
     Sleep(100);
+    Lock();
+  }
 
   // be patient.
-  while (watcher.Status == BluetoothLEAdvertisementWatcherStatus::Stopping)
+  while (watcher.Status == BluetoothLEAdvertisementWatcherStatus::Stopping) {
+    UnLock();
     Sleep(25);
-  
+    Lock();
+  }
+
   // cleanup
   watcher.Received -= advRecvToken;
   watcher.Stopped  -= advStopToken;
@@ -616,8 +738,75 @@ ReturnValue BleDeviceWinRT::WaitForDevice(BleAdvertisement **aAdvertisement, Ble
   mReturnScanResponse = nullptr;
   mAdvReceived = mScanRespReceived = false;
 
+  UnLock();
+
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
+
+ReturnValue BleDeviceWinRT::WaitForAdvertisementStop()
+{
+  uint64_t localCount, quietCount;
+  BluetoothLEAdvertisementWatcher watcher;
+  BleDeviceEventhandlerProxy    wrapper(this);
+
+  Lock();
+
+  // init for event handlers.
+  mReturnAdvertisement = nullptr;
+  mReturnScanResponse = nullptr;
+  mAdvReceived = mScanRespReceived = false;
+  mDetectOnly = true;
+  mAdvCount = localCount = quietCount = 0;
+
+
+  // register event handlers.
+  auto advRecv = ref new TypedEventHandler<BluetoothLEAdvertisementWatcher^, BluetoothLEAdvertisementReceivedEventArgs^>(%wrapper, &BleDeviceEventhandlerProxy::OnAdvertisementReceived);
+  auto advStop = ref new TypedEventHandler<BluetoothLEAdvertisementWatcher^, BluetoothLEAdvertisementWatcherStoppedEventArgs^>(%wrapper, &BleDeviceEventhandlerProxy::OnAdvertisementWatcherStopped);
+  auto advRecvToken = watcher.Received += advRecv;
+  auto advStopToken = watcher.Stopped += advStop;
+
+  // we want to get scan response packets.
+  watcher.ScanningMode = BluetoothLEScanningMode::Active;
+
+  // start watching.
+  watcher.Start();
+
+  // main wait. will terminate if no advertisements have been seen for 1s
+  uint64_t t = TimeMs();
+  while ((watcher.Status == BluetoothLEAdvertisementWatcherStatus::Started) && ( (TimeMs() - t) < 1000)) {
+
+    std::cout << "Time: " << t << " Adv: " << localCount << std::endl;
+
+    // record last advertisement count.
+    localCount = mAdvCount;
+
+    // go to sleep.
+    UnLock();
+    Sleep(100);
+    Lock();
+
+    // no adv detected in last sleep?
+    if (localCount != mAdvCount)
+      t = TimeMs();
+  }
+
+  // stop watching.
+  watcher.Stop();
+
+  // cleanup
+  watcher.Received -= advRecvToken;
+  watcher.Stopped -= advStopToken;
+  mReturnAdvertisement = nullptr;
+  mReturnScanResponse = nullptr;
+  mAdvReceived = mScanRespReceived = false;
+  mDetectOnly = false;
+  mAdvCount = 0;
+
+  UnLock();
+
+  return ReturnValue::BLEAPI_ERROR_SUCCESS;
+}
+
 
 void BleDeviceWinRT::Lock()
 {
@@ -651,34 +840,62 @@ void BleDeviceWinRT::OnNotification(GattCharacteristic^ sender, GattValueChanged
 
 void BleDeviceWinRT::OnAdvertisementReceived(BluetoothLEAdvertisementWatcher ^watcher, BluetoothLEAdvertisementReceivedEventArgs ^eventArgs)
 {
+  Lock();
+
+  // we are only waiting for the advertising to stop. no need for detailed processing.
+  if (mDetectOnly) {
+    if (eventArgs->BluetoothAddress == mBluetoothAddress)
+      mAdvCount++;
+
+    UnLock();
+    return;
+  }
+
+  // we are capturing adv and possibly scan response packets.
   switch (eventArgs->AdvertisementType) {
     case BluetoothLEAdvertisementType::ConnectableDirected:
     case BluetoothLEAdvertisementType::ConnectableUndirected:
     case BluetoothLEAdvertisementType::NonConnectableUndirected:
     case BluetoothLEAdvertisementType::ScannableUndirected:
       // already have it.
-      if (mAdvReceived)
+      if (mAdvReceived) {
+        UnLock();
         return;
+      }
 
       // we only accept advertisements from this device.
-      if (eventArgs->BluetoothAddress != mBluetoothAddress)
+      if (eventArgs->BluetoothAddress != mBluetoothAddress) {
+        UnLock();
         return;
+      }
 
       // set received and record it if required.
       mAdvReceived = true;
       if (mReturnAdvertisement)
         *mReturnAdvertisement = new BleAdvertisementWinRT(eventArgs->AdvertisementType, eventArgs->Advertisement);
 
+      if (mDevice == nullptr) {
+        mDevice = create_task(BluetoothLEDevice::FromBluetoothAddressAsync(mBluetoothAddress)).get();
+        if (mDevice == nullptr) {
+          UnLock();
+          return;
+        }
+      }
+
       break;
 
     case BluetoothLEAdvertisementType::ScanResponse:
       // already have it.
-      if (mScanRespReceived)
+      if (mScanRespReceived) {
+        UnLock();
         return;
+      }
 
       // we only accept advertisements from this device.
-      if (eventArgs->BluetoothAddress != mBluetoothAddress)
+      if (eventArgs->BluetoothAddress != mBluetoothAddress) {
+        UnLock();
         return;
+      }
 
       // set received and record it if required.
       mScanRespReceived = true;
@@ -688,18 +905,25 @@ void BleDeviceWinRT::OnAdvertisementReceived(BluetoothLEAdvertisementWatcher ^wa
       break;
 
     default:
+      UnLock();
       return;
   }
 
   // always wait for an advertisement
-  if (!mAdvReceived)
+  if (!mAdvReceived) {
+    UnLock();
     return;
+  }
 
   // if user requested scan response data, wait for it.
-  if (mReturnScanResponse && !mScanRespReceived)
+  if (mReturnScanResponse && !mScanRespReceived) {
+    UnLock();
     return;
+  }
 
   watcher->Stop();
+
+  UnLock();
 }
 
 void BleDeviceWinRT::OnAdvertisementWatcherStopped(BluetoothLEAdvertisementWatcher ^watcher, BluetoothLEAdvertisementWatcherStoppedEventArgs ^eventArgs)
@@ -732,10 +956,30 @@ void BleDeviceWinRT::OnAdvertisementWatcherStopped(BluetoothLEAdvertisementWatch
     std::cout << "The operation is disabled by the user.";
     break;
   case BluetoothError::ConsentRequired:
-    std::cout << "The operation is not supported on the current Bluetooth radio hardware.";
+    std::cout << "The operation requires consent.";
     break;
   default:
     std::cout << "Unknown Error";
+  }
+}
+
+void BleDeviceWinRT::OnCustomPairing(Windows::Devices::Enumeration::DeviceInformationCustomPairing ^ pairing, Windows::Devices::Enumeration::DevicePairingRequestedEventArgs ^ eventArgs)
+{
+  std::wcout << L"OnCustomPairing called for " << eventArgs->DeviceInformation->Name->Data() << L" with " << eventArgs->PairingKind.ToString()->Data() << std::endl;
+
+  switch (eventArgs->PairingKind)
+  {
+  case DevicePairingKinds::ConfirmOnly:
+  case DevicePairingKinds::ConfirmPinMatch:
+  case DevicePairingKinds::DisplayPin:
+    eventArgs->Accept();
+    break;
+  case DevicePairingKinds::ProvidePin:
+    eventArgs->Accept(ref new String(convert(mConfiguration.pin).c_str()));
+    break;
+  default:
+    break;
+    //throw std::exception("Not Implemented.");
   }
 }
 

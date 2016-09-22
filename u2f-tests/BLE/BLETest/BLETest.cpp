@@ -268,6 +268,7 @@ void Usage(char *name)
 	    << "  -T   : turn on BLE level tracing." << std::endl
       << "  -1.0 : Select U2F Version 1.0" << std::endl
       << "  -1.1 : Select U2F Version 1.1 (default)" << std::endl
+      << "  -P   : Provide PIN for pairing." << std::endl
     ;
 	exit(-1);
 }
@@ -358,10 +359,19 @@ int __cdecl main(int argc, char *argv[])
 		if (!strncmp(argv[count], "-c", 2)) {
 			arg_ansi = !arg_ansi;
 		}
-		++count;
+    if (!strncmp(argv[count], "-P", 2)) {
+      ++count;
+      if (count == argc) {
+        std::cerr << "Argument required for -P." <<
+          std::endl;
+        Usage(argv[0]);
+      }
+      configuration.pin = std::string(argv[count]);
+    }
+    ++count;
 	}
 
-  std::cout << "BLE Certification Tool " << VERSION << std::endl;
+  std::cout << "BLE Certification Tool " << VERSION << std::endl << std::endl;
 
 	try {
 		pBleApi api = BleApi::CreateAPI(configuration);
@@ -370,8 +380,10 @@ int __cdecl main(int argc, char *argv[])
 		std::vector < pBleDevice > devices = api->findDevices();
 
 		/* no devices found */
-		if (!devices.size())
-			return -1;
+    if (!devices.size()) {
+      std::cout << "No valid FIDO BLE devices found." << std::endl;
+      return -1;
+    }
 
 		/* show all valid devices? */
 		if (arg_ShowDevices) {
@@ -379,8 +391,7 @@ int __cdecl main(int argc, char *argv[])
 
 			std::cout << "All valid FIDO BLE devices:" << std::endl;
 			for (i = devices.begin(); i != devices.end(); i++) {
-				std::cout << "  " << (*i)->Identifier() << std::
-				    endl;
+				std::cout << "  " << (*i)->Identifier() << std::endl;
 			}
 			exit(0);
 		}
@@ -403,7 +414,7 @@ int __cdecl main(int argc, char *argv[])
 
 		/* verify device is valid. */
 		if (!dev) {
-			std::cout << "No valid device found.\n" << std::endl;
+			std::cout << "No valid device found." << std::endl;
 			exit(-1);
 		}
     std::cout << std::endl;

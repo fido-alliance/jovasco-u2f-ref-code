@@ -86,9 +86,13 @@ typedef class BleDevice {
   virtual bool IsAdvertising();
   virtual bool IsAuthenticated();
 
+  virtual ReturnValue Unpair();
+  virtual ReturnValue Pair();
+
   virtual void Report();
 
   virtual ReturnValue WaitForDevice(BleAdvertisement ** = nullptr, BleAdvertisement ** = nullptr);
+  virtual ReturnValue WaitForAdvertisementStop();
 
  protected:
 	// routes events and does reassembly for CommandWrite 
