@@ -3,6 +3,8 @@ U2F V1.1:
 
 1.1.0-beta3:
 * Verify pairing mode bits and service data
+* Verify advertising data contains FIDO uuid.
+* After pairing, reinitialize all pointers.
 
 1.1.0-beta2:
 * switch to using enum class and !operator for ReturnValue 

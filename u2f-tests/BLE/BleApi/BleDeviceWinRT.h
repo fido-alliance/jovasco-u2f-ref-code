@@ -80,13 +80,14 @@ protected:
 
   friend ref class BleDeviceEventhandlerProxy;
 
+  void Initialize();
 protected:
   std::string mDeviceInstanceId;
   uint64_t  mBluetoothAddress; /* used by WaitForDevice, even while mDevice is not valid */
   HANDLE mMutex;
   bool mNotificationsRegistered;
   Windows::Foundation::EventRegistrationToken mRegistrationToken;
-  ref class BleDeviceEventhandlerProxy  ^mEHWrapper;
+  ref class BleDeviceEventhandlerProxy  ^mNotificationProxy;
 
   // the next block if for advertisement processing and always accessed under lock.
   bool mAdvReceived, mScanRespReceived, mDetectOnly;

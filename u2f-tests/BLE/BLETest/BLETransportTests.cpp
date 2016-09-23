@@ -27,6 +27,18 @@ bool eventDone = true;
 unsigned char fragmentReplyBuffer[REPLY_BUFFER_LENGTH];
 unsigned int fragmentReplyBufferLength;
 
+bool ScanForUuid(std::vector<unsigned char> field, unsigned short uuid)
+{
+  bool retval = false;
+  unsigned char msb = ((uuid >> 8) & 0xFF), lsb = (uuid & 0xFF);
+
+  for (unsigned int i = 0; (!retval) && (i < field.size()); i += 2)
+    if ((field[i] == lsb) && (field[i + 1] == msb))
+      retval = true;
+
+  return retval;
+}
+
 ReturnValue WaitForEvent(pBleDevice dev, unsigned int timeout)
 {
 	uint64_t deadline = dev->TimeMs() + timeout;
@@ -389,6 +401,7 @@ ReturnValue BleApiTest_AdvertisingNotPairingMode(pBleDevice dev, bool &serviceda
   if (!dev->SupportsVersion(U2FVersion::V1_1))
     return ReturnValue::BLEAPI_ERROR_SUCCESS;
 
+  // unpairing before connecting
   ReturnValue retval = dev->Unpair();
   if (!retval)
     return retval;
@@ -398,6 +411,21 @@ ReturnValue BleApiTest_AdvertisingNotPairingMode(pBleDevice dev, bool &serviceda
   retval = dev->WaitForDevice(&adv, &scanresp);
   if (!retval)
     return retval;
+
+  // check FIDO UUID in all possible fields in both adv and scan response packets.
+  auto shortuuids = adv->GetSection(BleAdvertisementSectionType::More16bitUuid);
+  if (!ScanForUuid(shortuuids, FIDO_SERVICE_SHORTUUID)) {
+    shortuuids = adv->GetSection(BleAdvertisementSectionType::Complete16bitUuid);
+    if (!ScanForUuid(shortuuids, FIDO_SERVICE_SHORTUUID)) {
+      shortuuids = scanresp->GetSection(BleAdvertisementSectionType::More16bitUuid);
+      if (!ScanForUuid(shortuuids, FIDO_SERVICE_SHORTUUID)) {
+        shortuuids = scanresp->GetSection(BleAdvertisementSectionType::Complete16bitUuid);
+      }
+    }
+  }
+
+  // FIDO UUID must be advertised.
+  CHECK_EQ(ScanForUuid(shortuuids, FIDO_SERVICE_SHORTUUID), true);
 
   // check flags
   const auto flags = adv->GetSection(BleAdvertisementSectionType::Flags);

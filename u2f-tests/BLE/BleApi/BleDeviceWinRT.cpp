@@ -190,26 +190,15 @@ private:
 //  methods
 //
 
-BleDeviceWinRT::BleDeviceWinRT(pBleApi pBleApi, std::string deviceInstanceId, Windows::Devices::Bluetooth::BluetoothLEDevice ^ device, BleApiConfiguration &configuration)
-  : BleDevice(configuration)
-  , mDevice(device)
-  , mDeviceInstanceId(deviceInstanceId)
-  , mBluetoothAddress(device->BluetoothAddress)
-  , mNotificationsRegistered(false)
-  , mService(nullptr)
-  , mCharacteristicControlPointLength(nullptr)
-  , mCharacteristicControlPoint(nullptr)
-  , mCharacteristicStatus(nullptr)
-  , mCharacteristicVersion(nullptr)
-  , mCharacteristicVersionBitfield(nullptr)
+void BleDeviceWinRT::Initialize()
 {
   mService = mDevice->GetGattService(FIDO_SERVICE_GUID);
   if (!mService)
     STRING_RUNTIME_EXCEPTION("Could not get FIDO Service.");
 
   // control point length
-  auto 
-  characteristics =  mService->GetCharacteristics(FIDO_CHARACTERISTIC_CONTROLPOINTLENGTH_GUID);
+  auto
+    characteristics = mService->GetCharacteristics(FIDO_CHARACTERISTIC_CONTROLPOINTLENGTH_GUID);
   if (characteristics->Size == 0)
     throw STRING_RUNTIME_EXCEPTION("Could not find Control Point Length Characteristic in FIDO Service.");
 
@@ -232,12 +221,29 @@ BleDeviceWinRT::BleDeviceWinRT(pBleApi pBleApi, std::string deviceInstanceId, Wi
   // version
   bool v10version = false, v11version = false;
   characteristics = mService->GetCharacteristics(FIDO_CHARACTERISTIC_VERSION_GUID);
-  if (characteristics->Size > 0) 
+  if (characteristics->Size > 0)
     mCharacteristicVersion = characteristics->GetAt(0);
 
   characteristics = mService->GetCharacteristics(FIDO_CHARACTERISTIC_VERSIONBITFIELD_GUID);
   if (characteristics->Size > 0)
     mCharacteristicVersionBitfield = characteristics->GetAt(0);
+}
+
+BleDeviceWinRT::BleDeviceWinRT(pBleApi pBleApi, std::string deviceInstanceId, Windows::Devices::Bluetooth::BluetoothLEDevice ^ device, BleApiConfiguration &configuration)
+  : BleDevice(configuration)
+  , mDevice(device)
+  , mDeviceInstanceId(deviceInstanceId)
+  , mBluetoothAddress(device->BluetoothAddress)
+  , mNotificationsRegistered(false)
+  , mService(nullptr)
+  , mCharacteristicControlPointLength(nullptr)
+  , mCharacteristicControlPoint(nullptr)
+  , mCharacteristicStatus(nullptr)
+  , mCharacteristicVersion(nullptr)
+  , mCharacteristicVersionBitfield(nullptr)
+{
+  // fetch all internally used pointers.
+  Initialize();
 
   // mutex init
   mMutex = CreateMutex(NULL, false, NULL);
@@ -335,7 +341,7 @@ ReturnValue BleDeviceWinRT::Verify()
 
 ReturnValue BleDeviceWinRT::ControlPointWrite(unsigned char * buffer, unsigned int bufferLength)
 {
-  if ((mDevice == nullptr)||(mCharacteristicControlPoint = nullptr))
+  if ((mDevice == nullptr)||(mCharacteristicControlPoint == nullptr))
     throw STRING_RUNTIME_EXCEPTION("Device not initialized.");
 
   IBuffer ^b = ConvertToIBuffer(buffer, bufferLength);
@@ -449,9 +455,9 @@ ReturnValue BleDeviceWinRT::RegisterNotifications(pEventHandler eventHandler)
     return retval;
 
   if (!mNotificationsRegistered) {
-    mEHWrapper = ref new BleDeviceEventhandlerProxy(this);
+    mNotificationProxy = ref new BleDeviceEventhandlerProxy(this);
     auto eh = ref new TypedEventHandler<GattCharacteristic^, GattValueChangedEventArgs^>(
-      mEHWrapper, &BleDeviceEventhandlerProxy::OnNotification
+      mNotificationProxy, &BleDeviceEventhandlerProxy::OnNotification
       );
 
     mRegistrationToken = mCharacteristicStatus->ValueChanged += eh;
@@ -588,20 +594,23 @@ ReturnValue BleDeviceWinRT::Unpair()
   if ((mDevice == nullptr) || !mDevice->DeviceInformation->Pairing->IsPaired)
     return ReturnValue::BLEAPI_ERROR_SUCCESS;
 
+  if (mNotificationsRegistered) {
+    mCharacteristicStatus->ValueChanged -= mRegistrationToken;
+    mNotificationsRegistered = false;
+    mNotificationProxy = nullptr;
+  }
+
   DeviceUnpairingResult ^result = create_task(mDevice->DeviceInformation->Pairing->UnpairAsync()).get();
   if (result->Status != DeviceUnpairingResultStatus::Unpaired)
     return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;;
   
-  mDevice = nullptr;
-  mService = nullptr;
-  mCharacteristicControlPointLength = nullptr;
-  mCharacteristicControlPoint = nullptr;
-  mCharacteristicStatus = nullptr;
-  mCharacteristicVersion = nullptr;
-  mCharacteristicVersionBitfield = nullptr;
-
-  mNotificationsRegistered = false;
-  mEHWrapper = nullptr;
+  delete mDevice; mDevice = nullptr;
+  delete mService; mService = nullptr;
+  delete mCharacteristicControlPointLength; mCharacteristicControlPointLength = nullptr;
+  delete mCharacteristicControlPoint;       mCharacteristicControlPoint = nullptr;
+  delete mCharacteristicStatus;             mCharacteristicStatus = nullptr;
+  delete mCharacteristicVersion;            mCharacteristicVersion = nullptr;
+  delete mCharacteristicVersionBitfield;    mCharacteristicVersionBitfield = nullptr;
 
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -635,12 +644,59 @@ ReturnValue BleDeviceWinRT::Pair()
     if ((mConfiguration.logging & BleApiLogging::Debug) != 0)
       std::wcout << L"Pairing failed with: " << result->Status.ToString()->Data() << std::endl;
     mDevice->DeviceInformation->Pairing->Custom->PairingRequested -= pairingToken;
+    delete mDevice;
     mDevice = nullptr;
     return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
   }
 
   // clean up event handler.
   mDevice->DeviceInformation->Pairing->Custom->PairingRequested -= pairingToken;
+
+  // now we have successfully paired, recover the device and all relevant points.
+  String ^id = ref new String(convert(mDeviceInstanceId).c_str());
+
+  if ((mConfiguration.logging & BleApiLogging::Debug) != 0)
+    std::cout << "Waiting until device discovery is complete." << std::endl;
+
+  // this mess is necessary because we can detect the device and the service before
+  //   full device discovery is completed.
+  do {
+    // clean up.
+    if (mDevice != nullptr) {
+      delete mDevice;
+      mDevice = nullptr;
+    }
+
+    // fetch device
+    try {
+      mDevice = create_task(BluetoothLEDevice::FromIdAsync(id)).get();
+    }
+    catch (...) {
+      mDevice = nullptr;
+    };
+
+    // if successfull, try to initialize our object again.
+    if (mDevice != nullptr) {
+      try {
+        Initialize();
+      }
+      catch (...) {
+        // not fully initialized, so clean up.
+        mService = nullptr;
+        mCharacteristicControlPointLength = nullptr;
+        mCharacteristicControlPoint = nullptr;
+        mCharacteristicStatus = nullptr;
+        mCharacteristicVersion = nullptr;
+        mCharacteristicVersionBitfield = nullptr;
+      };
+
+      if (mService != nullptr)
+        break;
+    }
+
+    // Give Windows some time.
+    Sleep(250);
+  } while (true);
 
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -757,8 +813,7 @@ ReturnValue BleDeviceWinRT::WaitForAdvertisementStop()
   mAdvReceived = mScanRespReceived = false;
   mDetectOnly = true;
   mAdvCount = localCount = quietCount = 0;
-
-
+  
   // register event handlers.
   auto advRecv = ref new TypedEventHandler<BluetoothLEAdvertisementWatcher^, BluetoothLEAdvertisementReceivedEventArgs^>(%wrapper, &BleDeviceEventhandlerProxy::OnAdvertisementReceived);
   auto advStop = ref new TypedEventHandler<BluetoothLEAdvertisementWatcher^, BluetoothLEAdvertisementWatcherStoppedEventArgs^>(%wrapper, &BleDeviceEventhandlerProxy::OnAdvertisementWatcherStopped);
@@ -774,9 +829,6 @@ ReturnValue BleDeviceWinRT::WaitForAdvertisementStop()
   // main wait. will terminate if no advertisements have been seen for 1s
   uint64_t t = TimeMs();
   while ((watcher.Status == BluetoothLEAdvertisementWatcherStatus::Started) && ( (TimeMs() - t) < 1000)) {
-
-    std::cout << "Time: " << t << " Adv: " << localCount << std::endl;
-
     // record last advertisement count.
     localCount = mAdvCount;
 
@@ -785,7 +837,7 @@ ReturnValue BleDeviceWinRT::WaitForAdvertisementStop()
     Sleep(100);
     Lock();
 
-    // no adv detected in last sleep?
+    // adv detected in last sleep?
     if (localCount != mAdvCount)
       t = TimeMs();
   }
@@ -967,16 +1019,27 @@ void BleDeviceWinRT::OnCustomPairing(Windows::Devices::Enumeration::DeviceInform
 {
   std::wcout << L"OnCustomPairing called for " << eventArgs->DeviceInformation->Name->Data() << L" with " << eventArgs->PairingKind.ToString()->Data() << std::endl;
 
+  
   switch (eventArgs->PairingKind)
   {
   case DevicePairingKinds::ConfirmOnly:
+    eventArgs->Accept();
+    break;
   case DevicePairingKinds::ConfirmPinMatch:
   case DevicePairingKinds::DisplayPin:
+    std::wcout << L"Pairing PIN is: " << eventArgs->Pin->Data() << std::endl;
     eventArgs->Accept();
     break;
   case DevicePairingKinds::ProvidePin:
-    eventArgs->Accept(ref new String(convert(mConfiguration.pin).c_str()));
+  {
+    String ^pin = ref new String(convert(mConfiguration.pin).c_str());
+    if (pin != nullptr) {
+      eventArgs->Accept(pin);
+    } else {
+      throw STRING_RUNTIME_EXCEPTION("Pairing required PIN but it not supplied.");
+    }
     break;
+  }
   default:
     break;
     //throw std::exception("Not Implemented.");

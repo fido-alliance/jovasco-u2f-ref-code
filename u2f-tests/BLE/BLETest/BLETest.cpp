@@ -250,17 +250,17 @@ void Usage(char *name)
 {
 	std::cerr << "Usage: " << name << std::endl
 	    <<
-	    " [ -d <device-identifier>] [-l] [-h] [-a] [-v] [-V] [-p] [-e] [-u] [-t] [-w] [-i]"
+    " [-h] [-a] [-v] [-V] [-p] [-w] [-e] [-u] [-t] [-i] [-x] [-c] [-l] [ -d <device-identifier>] [-T] [-1.0] [-1.1] [-P <pin>]"
 	    << std::endl
 	    << "  -h   : this text." << std::endl
 	    << "  -a   : Do not abort on failed test." << std::endl
 	    << "  -v   : Verbose" << std::endl
 	    << "  -V   : Even more verbose" << std::endl
 	    << "  -p   : Pause at failed test" << std::endl
-	    << "  -u   : Disable U2F Raw Message tests. " << std::endl
+      << "  -w   : Warnings are treated as errors." << std::endl
+      << "  -u   : Disable U2F Raw Message tests. " << std::endl
 	    << "  -t   : Disable BLE Transport tests." << std::endl
 	    << "  -i   : Disable U2F ISO7816-4 encoding tests." << std::endl
-	    << "  -w   : Warnings are treated as errors." << std::endl
 	    << "  -x   : Disable encrypted connection requirement." << std::endl
 	    << "  -c   : Toggle ANSI colors." << std::endl
 	    << "  -l   : Show all known FIDO BLE devices and exit." << std::endl
