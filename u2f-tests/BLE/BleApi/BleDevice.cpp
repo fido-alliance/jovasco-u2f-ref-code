@@ -185,6 +185,11 @@ ReturnValue BleDevice::WaitForAdvertisementStop()
   throw std::exception("Not Implemented.");
 }
 
+ReturnValue BleDevice::WaitForAdvertisement(bool withPairingMode)
+{
+  throw std::exception("Not Implemented.");
+}
+
 void BleDevice::Lock()
 {
 	throw std::exception("Not Implemented.");

@@ -13,9 +13,10 @@ To build these tests you will need:
 	If you have git support included in VS2015, this will be done automatically.
 
 Supported platforms (tested):
-	Windows 8 + Windows Platform SDK 8 + VS2012
 	Windows 10 + Windows Platofrm SDK 10 + VS2015
 
+Verified hardware:
+	Thankpad Bluetooth 4.0 (BCM20702A1)
 
 Building for Windows:
 	nmake -f Makefile.win
@@ -42,19 +43,23 @@ You can then run the test on a specific device by doing:
 
 Full usage:
 
-Usage: BLETest [-d <device-identifier>] [-l] [-h] [-a] [-v] [-V] [-p] [-e] [-u] [-t] [-w] [-i] [-c] [-x]
-  -h : this text.
-  -a : Do not abort on failed test.
-  -v : Verbose
-  -V : Even more verbose
-  -p : Pause at failed test
-  -e : Device does preapproval when turned on
-  -u : Disable U2F Raw Message tests.
-  -t : Disable BLE Transport tests.
-  -i : Enable U2F ISO7816-4 encoding tests.
-  -w : Warnings are treated as errors.
-  -x : Disable encrypted connection requirement.
-  -c : Toggle ANSI colors.
-  -l : Show all known FIDO BLE devices and exit.
-  -d : Select specific FIDO BLE device.
-
+Usage: BLECertificationTool.exe
+ [-h] [-a] [-v] [-V] [-p] [-w] [-e] [-u] [-t] [-i] [-x] [-c] [-l] [ -d <device-identifier>] [-T] [-1.0] [-1.1] [-P <pin>]
+  -h   : this text.
+  -a   : Do not abort on failed test.
+  -v   : Verbose
+  -V   : Even more verbose
+  -p   : Pause at failed test
+  -w   : Warnings are treated as errors.
+  -u   : Disable U2F Raw Message tests.
+  -t   : Disable BLE Transport tests.
+  -i   : Disable U2F ISO7816-4 encoding tests.
+  -x   : Disable encrypted connection requirement.
+  -c   : Toggle ANSI colors.
+  -l   : Show all known FIDO BLE devices and exit.
+  -d   : Select specific FIDO BLE device.
+  -T   : turn on BLE level tracing.
+  -1.0 : Select U2F Version 1.0
+  -1.1 : Select U2F Version 1.1 (default)
+  -P   : Provide PIN for pairing.
+  -C   : Device advertises continuously.

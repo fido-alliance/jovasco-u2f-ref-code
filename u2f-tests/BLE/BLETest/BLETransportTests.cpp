@@ -71,7 +71,7 @@ void BleApiTest_TransportEventHandler(BleDevice::FIDOEventType type,
 	eventDone = true;
 }
 
-ReturnValue BleApiTest_TransportPing(pBleDevice dev)
+ReturnValue BleApiTest_TransportPing(BleApiConfiguration &config, pBleDevice dev)
 {
 	ReturnValue retval;
 	float sent, received;
@@ -104,7 +104,7 @@ ReturnValue BleApiTest_TransportPing(pBleDevice dev)
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
-ReturnValue BleApiTest_TransportUnknown(pBleDevice dev, unsigned char cmd)
+ReturnValue BleApiTest_TransportUnknown(BleApiConfiguration &config, pBleDevice dev, unsigned char cmd)
 {
 	ReturnValue retval;
 	float sent, received;
@@ -139,7 +139,7 @@ ReturnValue BleApiTest_TransportUnknown(pBleDevice dev, unsigned char cmd)
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
-ReturnValue BleApiTest_TransportLongPing(pBleDevice dev)
+ReturnValue BleApiTest_TransportLongPing(BleApiConfiguration &config, pBleDevice dev)
 {
 	ReturnValue retval;
 	float sent, received;
@@ -169,7 +169,7 @@ ReturnValue BleApiTest_TransportLongPing(pBleDevice dev)
 }
 
 #define LIMITS_MAXLENGTH		((1 << 16))
-ReturnValue BleApiTest_TransportLimits(pBleDevice dev)
+ReturnValue BleApiTest_TransportLimits(BleApiConfiguration &config, pBleDevice dev)
 {
 	ReturnValue retval;
 	float sent, received;
@@ -223,7 +223,7 @@ ReturnValue BleApiTest_TransportLimits(pBleDevice dev)
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
-ReturnValue BleApiTest_TransportNotCont(pBleDevice dev)
+ReturnValue BleApiTest_TransportNotCont(BleApiConfiguration &config, pBleDevice dev)
 {
 	ReturnValue retval;
 
@@ -270,7 +270,7 @@ ReturnValue BleApiTest_TransportNotCont(pBleDevice dev)
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
-ReturnValue BleApiTest_TransportBadSequence(pBleDevice dev)
+ReturnValue BleApiTest_TransportBadSequence(BleApiConfiguration &config, pBleDevice dev)
 {
 	ReturnValue retval;
 
@@ -321,7 +321,7 @@ ReturnValue BleApiTest_TransportBadSequence(pBleDevice dev)
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
-ReturnValue BleApiTest_TransportContFirst(pBleDevice dev)
+ReturnValue BleApiTest_TransportContFirst(BleApiConfiguration &config, pBleDevice dev)
 {
 	ReturnValue retval;
 
@@ -360,7 +360,7 @@ ReturnValue BleApiTest_TransportContFirst(pBleDevice dev)
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
-ReturnValue BleApiTest_TransportTooLong(pBleDevice dev)
+ReturnValue BleApiTest_TransportTooLong(BleApiConfiguration &config, pBleDevice dev)
 {
 	ReturnValue retval;
 
@@ -395,7 +395,7 @@ ReturnValue BleApiTest_TransportTooLong(pBleDevice dev)
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
-ReturnValue BleApiTest_AdvertisingNotPairingMode(pBleDevice dev, bool &servicedata_present)
+ReturnValue BleApiTest_AdvertisingNotPairingMode(BleApiConfiguration &config, pBleDevice dev, bool &servicedata_present)
 {
   // if we don't support V1.1, this test is not applicable.
   if (!dev->SupportsVersion(U2FVersion::V1_1))
@@ -407,7 +407,7 @@ ReturnValue BleApiTest_AdvertisingNotPairingMode(pBleDevice dev, bool &serviceda
     return retval;
 
   // collect advertisement and scan response.
-  BleAdvertisement *adv, *scanresp;
+  BleAdvertisement *adv = NULL, *scanresp = NULL;
   retval = dev->WaitForDevice(&adv, &scanresp);
   if (!retval)
     return retval;
@@ -459,19 +459,30 @@ ReturnValue BleApiTest_AdvertisingNotPairingMode(pBleDevice dev, bool &serviceda
     return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
 
   // we wait for the device to turn itself off again.
-  INFO << "Waiting until the device stops advertising." << std::endl;
-  dev->WaitForAdvertisementStop();
+  if (!config.continuous) {
+    INFO << "Waiting until the device stops advertising." << std::endl;
+    dev->WaitForAdvertisementStop();
+  }
 
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
-ReturnValue BleApiTest_AdvertisingPairingMode(pBleDevice dev, bool &servicedata_present)
+ReturnValue BleApiTest_AdvertisingPairingMode(BleApiConfiguration &config, pBleDevice dev, bool &servicedata_present)
 {
   // if we don't support V1.1, this test is not applicable.
   if (!dev->SupportsVersion(U2FVersion::V1_1))
     return ReturnValue::BLEAPI_ERROR_SUCCESS;
 
-  ReturnValue retval = dev->Unpair();
+  ReturnValue retval;
+  // in continuous mode, the device always advertises and we ahve to wait until the advertising changes
+  //   before we continue.
+  if (config.continuous) {
+    retval = dev->WaitForAdvertisement(true);
+    if (!retval)
+      return retval;
+  }
+
+  retval = dev->Unpair();
   if (!retval)
     return retval;
 

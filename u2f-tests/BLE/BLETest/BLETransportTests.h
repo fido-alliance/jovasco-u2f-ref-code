@@ -25,16 +25,16 @@ extern void BleApiTest_TransportEventHandler(BleDevice::FIDOEventType type,
 					     unsigned char *buffer,
 					     unsigned int bufferLength);
 
-extern ReturnValue BleApiTest_TransportPing(pBleDevice dev);
-extern ReturnValue BleApiTest_TransportLongPing(pBleDevice dev);
-extern ReturnValue BleApiTest_TransportLimits(pBleDevice dev);
-extern ReturnValue BleApiTest_TransportUnknown(pBleDevice dev,
+extern ReturnValue BleApiTest_TransportPing(BleApiConfiguration &config, pBleDevice dev);
+extern ReturnValue BleApiTest_TransportLongPing(BleApiConfiguration &config, pBleDevice dev);
+extern ReturnValue BleApiTest_TransportLimits(BleApiConfiguration &config, pBleDevice dev);
+extern ReturnValue BleApiTest_TransportUnknown(BleApiConfiguration &config, pBleDevice dev,
 					       unsigned char cmd);
-extern ReturnValue BleApiTest_TransportNotCont(pBleDevice dev);
-extern ReturnValue BleApiTest_TransportBadSequence(pBleDevice dev);
-extern ReturnValue BleApiTest_TransportContFirst(pBleDevice dev);
-extern ReturnValue BleApiTest_TransportTooLong(pBleDevice dev);
-extern ReturnValue BleApiTest_AdvertisingNotPairingMode(pBleDevice dev, bool &servicedata_present);
-extern ReturnValue BleApiTest_AdvertisingPairingMode(pBleDevice dev, bool &servicedata_present);
+extern ReturnValue BleApiTest_TransportNotCont(BleApiConfiguration &config, pBleDevice dev);
+extern ReturnValue BleApiTest_TransportBadSequence(BleApiConfiguration &config, pBleDevice dev);
+extern ReturnValue BleApiTest_TransportContFirst(BleApiConfiguration &config, pBleDevice dev);
+extern ReturnValue BleApiTest_TransportTooLong(BleApiConfiguration &config, pBleDevice dev);
+extern ReturnValue BleApiTest_AdvertisingNotPairingMode(BleApiConfiguration &config, pBleDevice dev, bool &servicedata_present);
+extern ReturnValue BleApiTest_AdvertisingPairingMode(BleApiConfiguration &config, pBleDevice dev, bool &servicedata_present);
 
 #endif

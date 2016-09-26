@@ -1,6 +1,12 @@
 
 U2F V1.1:
 
+1.1.0-beta4:
+* add support for continuously advertising devices.
+* move more options to configuration class.
+* remove "hasButton" usb leftover.
+* always wait until device disconnects after succesful pairing.
+
 1.1.0-beta3:
 * Verify pairing mode bits and service data
 * Verify advertising data contains FIDO uuid.

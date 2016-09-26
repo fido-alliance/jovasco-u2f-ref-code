@@ -68,6 +68,7 @@ public:
 
   virtual ReturnValue WaitForDevice(BleAdvertisement ** = nullptr, BleAdvertisement ** = nullptr);
   virtual ReturnValue WaitForAdvertisementStop();
+  virtual ReturnValue WaitForAdvertisement(bool withPairingMode);
 
 protected:
   virtual void Lock();
@@ -90,7 +91,7 @@ protected:
   ref class BleDeviceEventhandlerProxy  ^mNotificationProxy;
 
   // the next block if for advertisement processing and always accessed under lock.
-  bool mAdvReceived, mScanRespReceived, mDetectOnly;
+  bool mAdvReceived, mScanRespReceived, mDetectOnly, mAutoStop;
   uint64_t  mAdvCount;
   BleAdvertisement **mReturnAdvertisement;
   BleAdvertisement **mReturnScanResponse;

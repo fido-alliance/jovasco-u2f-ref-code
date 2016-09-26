@@ -604,13 +604,13 @@ ReturnValue BleDeviceWinRT::Unpair()
   if (result->Status != DeviceUnpairingResultStatus::Unpaired)
     return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;;
   
-  delete mDevice; mDevice = nullptr;
-  delete mService; mService = nullptr;
-  delete mCharacteristicControlPointLength; mCharacteristicControlPointLength = nullptr;
-  delete mCharacteristicControlPoint;       mCharacteristicControlPoint = nullptr;
-  delete mCharacteristicStatus;             mCharacteristicStatus = nullptr;
-  delete mCharacteristicVersion;            mCharacteristicVersion = nullptr;
-  delete mCharacteristicVersionBitfield;    mCharacteristicVersionBitfield = nullptr;
+  mDevice = nullptr;
+  mService = nullptr;
+  mCharacteristicControlPointLength = nullptr;
+  mCharacteristicControlPoint = nullptr;
+  mCharacteristicStatus = nullptr;
+  mCharacteristicVersion = nullptr;
+  mCharacteristicVersionBitfield = nullptr;
 
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -644,7 +644,6 @@ ReturnValue BleDeviceWinRT::Pair()
     if ((mConfiguration.logging & BleApiLogging::Debug) != 0)
       std::wcout << L"Pairing failed with: " << result->Status.ToString()->Data() << std::endl;
     mDevice->DeviceInformation->Pairing->Custom->PairingRequested -= pairingToken;
-    delete mDevice;
     mDevice = nullptr;
     return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
   }
@@ -663,7 +662,6 @@ ReturnValue BleDeviceWinRT::Pair()
   do {
     // clean up.
     if (mDevice != nullptr) {
-      delete mDevice;
       mDevice = nullptr;
     }
 
@@ -697,6 +695,11 @@ ReturnValue BleDeviceWinRT::Pair()
     // Give Windows some time.
     Sleep(250);
   } while (true);
+
+  // wait until device disconnects after pairing.
+  std::cout << "Waiting until device disconnects." << std::endl;
+  while (IsConnected()) 
+     Sleep(250);
 
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -760,6 +763,7 @@ ReturnValue BleDeviceWinRT::WaitForDevice(BleAdvertisement **aAdvertisement, Ble
   mReturnAdvertisement = aAdvertisement;
   mReturnScanResponse = aScanResponse;
   mAdvReceived = mScanRespReceived = mDetectOnly = false;
+  mAutoStop = true;
 
   // register event handlers.
   auto advRecv = ref new TypedEventHandler<BluetoothLEAdvertisementWatcher^, BluetoothLEAdvertisementReceivedEventArgs^>(%wrapper, &BleDeviceEventhandlerProxy::OnAdvertisementReceived);
@@ -801,7 +805,7 @@ ReturnValue BleDeviceWinRT::WaitForDevice(BleAdvertisement **aAdvertisement, Ble
 
 ReturnValue BleDeviceWinRT::WaitForAdvertisementStop()
 {
-  uint64_t localCount, quietCount;
+  uint64_t localCount;
   BluetoothLEAdvertisementWatcher watcher;
   BleDeviceEventhandlerProxy    wrapper(this);
 
@@ -812,7 +816,8 @@ ReturnValue BleDeviceWinRT::WaitForAdvertisementStop()
   mReturnScanResponse = nullptr;
   mAdvReceived = mScanRespReceived = false;
   mDetectOnly = true;
-  mAdvCount = localCount = quietCount = 0;
+  mAutoStop = false;
+  mAdvCount = localCount = 0;
   
   // register event handlers.
   auto advRecv = ref new TypedEventHandler<BluetoothLEAdvertisementWatcher^, BluetoothLEAdvertisementReceivedEventArgs^>(%wrapper, &BleDeviceEventhandlerProxy::OnAdvertisementReceived);
@@ -844,6 +849,72 @@ ReturnValue BleDeviceWinRT::WaitForAdvertisementStop()
 
   // stop watching.
   watcher.Stop();
+
+  // cleanup
+  watcher.Received -= advRecvToken;
+  watcher.Stopped -= advStopToken;
+  mReturnAdvertisement = nullptr;
+  mReturnScanResponse = nullptr;
+  mAdvReceived = mScanRespReceived = false;
+  mDetectOnly = false;
+  mAdvCount = 0;
+
+  UnLock();
+
+  return ReturnValue::BLEAPI_ERROR_SUCCESS;
+}
+
+ReturnValue BleDeviceWinRT::WaitForAdvertisement(bool withPairingMode)
+{
+  BleAdvertisement *advertisement;
+  BluetoothLEAdvertisementWatcher watcher;
+  BleDeviceEventhandlerProxy    wrapper(this);
+
+  Lock();
+
+  // init for event handlers.
+  mReturnAdvertisement = &advertisement;
+  mReturnScanResponse = nullptr;
+  mAdvReceived = mScanRespReceived = false;
+  mDetectOnly = false; mAutoStop = false;
+  mAdvCount = 0;
+
+  // register event handlers.
+  auto advRecv = ref new TypedEventHandler<BluetoothLEAdvertisementWatcher^, BluetoothLEAdvertisementReceivedEventArgs^>(%wrapper, &BleDeviceEventhandlerProxy::OnAdvertisementReceived);
+  auto advStop = ref new TypedEventHandler<BluetoothLEAdvertisementWatcher^, BluetoothLEAdvertisementWatcherStoppedEventArgs^>(%wrapper, &BleDeviceEventhandlerProxy::OnAdvertisementWatcherStopped);
+  auto advRecvToken = watcher.Received += advRecv;
+  auto advStopToken = watcher.Stopped += advStop;
+
+  // we want to get scan response packets.
+  watcher.ScanningMode = BluetoothLEScanningMode::Active;
+
+  // start watching.
+  watcher.Start();
+
+  // main wait. will terminate if no advertisements have been seen for 1s
+  do {
+    do {
+      // go to sleep.
+      UnLock();
+      Sleep(100);
+      Lock();
+    } while (!mAdvReceived);
+
+    // check flags
+    const auto flags = advertisement->GetSection(BleAdvertisementSectionType::Flags);
+
+    // if one of those flags is on, it is a pairing mode advertisement.
+    if (((flags[0] & (BleFlagFields::LEGeneralDiscoverabilityMode | BleFlagFields::LELimitedDiscoverabilityMode)) != 0) == withPairingMode)
+      break;
+
+    advertisement = nullptr;
+    mAdvReceived = false;
+  } while (true);
+
+  // stop watching.
+  watcher.Stop();
+  while (watcher.Status == BluetoothLEAdvertisementWatcherStatus::Stopping) 
+    Sleep(25);
 
   // cleanup
   watcher.Received -= advRecvToken;
@@ -973,7 +1044,8 @@ void BleDeviceWinRT::OnAdvertisementReceived(BluetoothLEAdvertisementWatcher ^wa
     return;
   }
 
-  watcher->Stop();
+  if (mAutoStop)
+    watcher->Stop();
 
   UnLock();
 }
@@ -1017,7 +1089,8 @@ void BleDeviceWinRT::OnAdvertisementWatcherStopped(BluetoothLEAdvertisementWatch
 
 void BleDeviceWinRT::OnCustomPairing(Windows::Devices::Enumeration::DeviceInformationCustomPairing ^ pairing, Windows::Devices::Enumeration::DevicePairingRequestedEventArgs ^ eventArgs)
 {
-  std::wcout << L"OnCustomPairing called for " << eventArgs->DeviceInformation->Name->Data() << L" with " << eventArgs->PairingKind.ToString()->Data() << std::endl;
+  if (mConfiguration.logging & BleApiLogging::Debug)
+    std::wcout << L"OnCustomPairing called for " << eventArgs->DeviceInformation->Name->Data() << L" with " << eventArgs->PairingKind.ToString()->Data() << std::endl;
 
   
   switch (eventArgs->PairingKind)
@@ -1036,7 +1109,7 @@ void BleDeviceWinRT::OnCustomPairing(Windows::Devices::Enumeration::DeviceInform
     if (pin != nullptr) {
       eventArgs->Accept(pin);
     } else {
-      throw STRING_RUNTIME_EXCEPTION("Pairing required PIN but it not supplied.");
+      std::cout << "Pairing required PIN but it not supplied." << std::endl << std::flush;
     }
     break;
   }

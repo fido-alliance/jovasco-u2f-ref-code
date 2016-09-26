@@ -13,7 +13,6 @@
 #include "../BleApi/fido_ble.h"
 
 int arg_Verbose = 0;		// default
-bool arg_hasButton = false;
 bool arg_u2f = true;
 bool arg_transport = true;
 bool arg_iso7816 = true;
@@ -141,15 +140,15 @@ ReturnValue BLETransportTests(BleApiConfiguration &configuration, pBleDevice dev
 	// set timeout at 30 seconds, just in case devices just doesn't answer.
 	dev->SetTimeout(30000);
 
-	PASS(BleApiTest_TransportPing(dev));
-	PASS(BleApiTest_TransportLongPing(dev));
-	PASS(BleApiTest_TransportLimits(dev));
+	PASS(BleApiTest_TransportPing(configuration, dev));
+	PASS(BleApiTest_TransportLongPing(configuration, dev));
+	PASS(BleApiTest_TransportLimits(configuration, dev));
 	PASS(BleApiTest_TransportUnknown
-	     (dev, (4 + (rand() % (TYPE_INIT - 0x04)))));
-	PASS(BleApiTest_TransportNotCont(dev));
-	PASS(BleApiTest_TransportBadSequence(dev));
-	PASS(BleApiTest_TransportContFirst(dev));
-	PASS(BleApiTest_TransportTooLong(dev));
+	     (configuration, dev, (4 + (rand() % (TYPE_INIT - 0x04)))));
+	PASS(BleApiTest_TransportNotCont(configuration, dev));
+	PASS(BleApiTest_TransportBadSequence(configuration, dev));
+	PASS(BleApiTest_TransportContFirst(configuration, dev));
+	PASS(BleApiTest_TransportTooLong(configuration, dev));
 
   // rest of the tests are not for 1.0
   if (configuration.version == U2FVersion::V1_0)
@@ -160,11 +159,11 @@ ReturnValue BLETransportTests(BleApiConfiguration &configuration, pBleDevice dev
 
   bool pairingmode_sd_present = false, notpairingmode_sd_present = false;
   std::cout << "Turn on device NOT in Pairing Mode." << std::endl;
-  PASS(BleApiTest_AdvertisingNotPairingMode(dev, notpairingmode_sd_present));
+  PASS(BleApiTest_AdvertisingNotPairingMode(configuration, dev, notpairingmode_sd_present));
   WaitForDeviceDisconnected(configuration, dev); // just to be sure
 
   std::cout << "Turn on device in Pairing Mode." << std::endl;
-  PASS(BleApiTest_AdvertisingPairingMode(dev, pairingmode_sd_present));
+  PASS(BleApiTest_AdvertisingPairingMode(configuration, dev, pairingmode_sd_present));
   WaitForDeviceDisconnected(configuration, dev); // just to be sure.
 
   // if the service data is present in 1 mode, it needs to be present in both.
@@ -248,27 +247,28 @@ ReturnValue U2FTests(BleApiConfiguration &configuration, pBleDevice dev)
 
 void Usage(char *name)
 {
-	std::cerr << "Usage: " << name << std::endl
-	    <<
+  std::cerr << "Usage: " << name << std::endl
+    <<
     " [-h] [-a] [-v] [-V] [-p] [-w] [-e] [-u] [-t] [-i] [-x] [-c] [-l] [ -d <device-identifier>] [-T] [-1.0] [-1.1] [-P <pin>]"
-	    << std::endl
-	    << "  -h   : this text." << std::endl
-	    << "  -a   : Do not abort on failed test." << std::endl
-	    << "  -v   : Verbose" << std::endl
-	    << "  -V   : Even more verbose" << std::endl
-	    << "  -p   : Pause at failed test" << std::endl
-      << "  -w   : Warnings are treated as errors." << std::endl
-      << "  -u   : Disable U2F Raw Message tests. " << std::endl
-	    << "  -t   : Disable BLE Transport tests." << std::endl
-	    << "  -i   : Disable U2F ISO7816-4 encoding tests." << std::endl
-	    << "  -x   : Disable encrypted connection requirement." << std::endl
-	    << "  -c   : Toggle ANSI colors." << std::endl
-	    << "  -l   : Show all known FIDO BLE devices and exit." << std::endl
-	    << "  -d   : Select specific FIDO BLE device." << std::endl
-	    << "  -T   : turn on BLE level tracing." << std::endl
-      << "  -1.0 : Select U2F Version 1.0" << std::endl
-      << "  -1.1 : Select U2F Version 1.1 (default)" << std::endl
-      << "  -P   : Provide PIN for pairing." << std::endl
+    << std::endl
+    << "  -h   : this text." << std::endl
+    << "  -a   : Do not abort on failed test." << std::endl
+    << "  -v   : Verbose" << std::endl
+    << "  -V   : Even more verbose" << std::endl
+    << "  -p   : Pause at failed test" << std::endl
+    << "  -w   : Warnings are treated as errors." << std::endl
+    << "  -u   : Disable U2F Raw Message tests. " << std::endl
+    << "  -t   : Disable BLE Transport tests." << std::endl
+    << "  -i   : Disable U2F ISO7816-4 encoding tests." << std::endl
+    << "  -x   : Disable encrypted connection requirement." << std::endl
+    << "  -c   : Toggle ANSI colors." << std::endl
+    << "  -l   : Show all known FIDO BLE devices and exit." << std::endl
+    << "  -d   : Select specific FIDO BLE device." << std::endl
+    << "  -T   : turn on BLE level tracing." << std::endl
+    << "  -1.0 : Select U2F Version 1.0" << std::endl
+    << "  -1.1 : Select U2F Version 1.1 (default)" << std::endl
+    << "  -P   : Provide PIN for pairing." << std::endl
+    << "  -C   : Device advertises continuously. " << std::endl;
     ;
 	exit(-1);
 }
@@ -302,10 +302,6 @@ int __cdecl main(int argc, char *argv[])
 		}
 		if (!strncmp(argv[count], "-h", 2)) {
 			Usage(argv[0]);
-		}
-		if (!strncmp(argv[count], "-b", 2)) {
-			// Fob does not have button
-			arg_hasButton = false;
 		}
     if (!strncmp(argv[count], "-e", 2)) {
       // fob uses pre-approval
@@ -367,6 +363,9 @@ int __cdecl main(int argc, char *argv[])
         Usage(argv[0]);
       }
       configuration.pin = std::string(argv[count]);
+    }
+    if (!strncmp(argv[count], "-C", 2)) {
+      configuration.continuous = true;
     }
     ++count;
 	}
@@ -440,9 +439,10 @@ int __cdecl main(int argc, char *argv[])
       break;
     }
     std::cout << std::endl;
-    std::cout << "Encryption : " << (configuration.encrypt ? "Yes" : "No") << std::endl;
-    std::cout << "Adaptive   : " << (configuration.adaptive? "Yes" : "No") << std::endl;
-    std::cout << "Logging    : " << (configuration.logging & BleApiLogging::Info ? "Info " : "") << (configuration.logging & BleApiLogging::Debug ? "Debug " : "") << (configuration.logging & BleApiLogging::Tracing ? "Tracing" : "") << std::endl;
+    std::cout << "Pairing PIN   : " << (configuration.pin.empty() ? "NA" : configuration.pin);
+    std::cout << "Encryption    : " << (configuration.encrypt ? "Yes" : "No") << std::endl;
+    std::cout << "Coninuous Adv : " << (configuration.continuous ? "Yes" : "No") << std::endl;
+    std::cout << "Logging       : " << (configuration.logging & BleApiLogging::Info ? "Info " : "") << (configuration.logging & BleApiLogging::Debug ? "Debug " : "") << (configuration.logging & BleApiLogging::Tracing ? "Tracing" : "") << std::endl;
     std::cout << std::endl;
 
     /* something to do? */
@@ -460,6 +460,9 @@ int __cdecl main(int argc, char *argv[])
 		/* check that link encryption is enabled */
 		WARN_EQ(configuration.encrypt, true);
 
+    // we wait until the device is disconnected to ensure we have a clean start.
+    while (dev->IsConnected())
+      dev->Sleep(100);
 
     std::cout << "=== Starting Tests === " << std::endl;
 
