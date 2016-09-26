@@ -18,6 +18,7 @@
 
 #include "BleApiWinRT.h"
 #include "BleDeviceWinRT.h"
+#include <iostream>
 #include <ppltasks.h>
 #include <locale>
 #include <codecvt>
@@ -30,6 +31,7 @@ using namespace Windows::Foundation::Collections;
 using namespace Windows::Devices::Enumeration;
 using namespace Windows::Devices::Bluetooth;
 using namespace Windows::Devices::Bluetooth::GenericAttributeProfile;
+using namespace Windows::Devices::Radios;
 
 static const Guid FIDO_SERVICE_GUID(0x0000FFFD, 0x0000, 0x1000, 0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB);
 
@@ -133,4 +135,35 @@ std::vector<BleDevice*> BleApiWinRT::findDevices()
   }
 
   return list;
+}
+
+bool BleApiWinRT::IsEnabled()
+{
+  try {
+    // check if there is a bluetooth radio.
+    auto radios = create_task(Radio::GetRadiosAsync()).get();
+    bool found = false, on = false;
+    for (auto i = radios->First(); (!found || (!on)) && i->HasCurrent; i->MoveNext())
+    {
+      if (i->Current->Kind == RadioKind::Bluetooth)
+      {
+        found = true;
+        if (i->Current->State == RadioState::On)
+          on = true;
+      }
+    }
+    if (!found) {
+      std::cout << "Bluetooth radio not found." << std::endl;
+      return false;
+    }
+    if (!on) {
+      std::cout << "Bluetooth radio found but disabled." << std::endl;
+      return false;
+    }
+
+    return true;
+  }
+  catch (...) {
+    return false;
+  }
 }

@@ -375,6 +375,9 @@ int __cdecl main(int argc, char *argv[])
 	try {
 		pBleApi api = BleApi::CreateAPI(configuration);
 
+    if (!api->IsEnabled())
+      return -1;
+
 		/* find U2F Devices */
 		std::vector < pBleDevice > devices = api->findDevices();
 

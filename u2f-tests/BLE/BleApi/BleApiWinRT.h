@@ -27,9 +27,10 @@ typedef class BleApiWinRT : public BleApi {
 public:
   BleApiWinRT(BleApiConfiguration &configuration);
   ~BleApiWinRT(void);
-
+  
 public:
   virtual std::vector < BleDevice * >findDevices();
+  virtual bool IsEnabled();
 } *pBleApiWinRT;
 
 #endif				/* _BLEAPI_BLEAPIWINDOWS_H_ */

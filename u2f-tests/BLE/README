@@ -16,7 +16,8 @@ Supported platforms (tested):
 	Windows 10 + Windows Platofrm SDK 10 + VS2015
 
 Verified hardware:
-	Thankpad Bluetooth 4.0 (BCM20702A1)
+	Lenovo Thinkpad Bluetooth 4.0 (BCM20702A1)
+	USB Orico 4.0 dongle. (CSR8510 A10)
 
 Building for Windows:
 	nmake -f Makefile.win

@@ -32,6 +32,7 @@ protected:
 
 public:
   virtual std::vector < pBleDevice > findDevices();
+  virtual bool IsEnabled();
 
   static BleApi *CreateAPI(BleApiConfiguration &configuration);
 

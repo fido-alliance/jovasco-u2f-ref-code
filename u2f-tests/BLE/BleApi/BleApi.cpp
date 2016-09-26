@@ -52,6 +52,11 @@ std::vector < BleDevice * >BleApi::findDevices()
 	return empty;
 }
 
+bool BleApi::IsEnabled()
+{
+  return false;
+}
+
 BleApi *BleApi::CreateAPI(BleApiConfiguration &configuration)
 {
 #ifdef PLATFORM_WINDOWS

@@ -452,6 +452,8 @@ ReturnValue BleApiTest_AdvertisingNotPairingMode(BleApiConfiguration &config, pB
     CHECK_EQ(serviceflags & FIDO_BLE_SERVICEDATA_PAIRINGMODE, 0);
   }
 
+  INFO << "Device found. Trying to pair...";
+
   // we are NOT in pairing mode, so this should fail...
   retval = dev->Pair();
   CHECK_NE(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
@@ -518,6 +520,8 @@ ReturnValue BleApiTest_AdvertisingPairingMode(BleApiConfiguration &config, pBleD
     if (dev->IsAuthenticated())
       CHECK_EQ(serviceflags & FIDO_BLE_SERVICEDATA_PASSKEYENTRY, FIDO_BLE_SERVICEDATA_PASSKEYENTRY);
   }
+
+  INFO << "Device found. Trying to pair...";
 
   // we are in pairing mode, so this should succeed...
   retval = dev->Pair();

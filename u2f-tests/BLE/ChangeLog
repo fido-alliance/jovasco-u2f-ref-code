@@ -1,6 +1,9 @@
 
 U2F V1.1:
 
+1.1.0-beta5:
+* add some bluetooth radio diagnostics.
+
 1.1.0-beta4:
 * add support for continuously advertising devices.
 * move more options to configuration class.
