@@ -194,7 +194,7 @@ ReturnValue BleApiTest_TransportLimits(BleApiConfiguration &config, pBleDevice d
 		retval =
 		    dev->CommandWrite(FIDO_BLE_CMD_PING, request, requestLength,
 				      &replyCmd, reply, &replyLength);
-		CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
+		CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS,"CommandWrite failed.");
 
 		received = (float)dev->TimeMs();
 

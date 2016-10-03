@@ -60,6 +60,7 @@ inline std::runtime_error hresult_exception(std::string file, int line, HRESULT 
 }
 #define HRESULT_RUNTIME_EXCEPTION(x)		hresult_exception(__FILE__, __LINE__, x);
 #define STRING_RUNTIME_EXCEPTION(x)		std::runtime_error( __FILE__ ":" + std::to_string(__LINE__) + ": " + x)
+#define CX_EXCEPTION(x)               HRESULT_RUNTIME_EXCEPTION(x->HResult)
 
 #define CHECK_SERVICE(maDevice, maService)  try { if (maDevice->GetGattService(GattServiceUuids::maService) == nullptr) throw; } \
       catch (Platform::Exception^ comException) \
@@ -139,10 +140,24 @@ ReturnValue ReadCharacteristic(GattCharacteristic ^characteristic, unsigned char
     return ReturnValue::BLEAPI_ERROR_INVALID_PARAMETER;
 
   // read characteristic
-  GattReadResult ^result = create_task(characteristic->ReadValueAsync()).get();
-  if (result->Status != GattCommunicationStatus::Success)
-    return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
-
+  GattReadResult ^result;
+  try {
+    result = create_task(characteristic->ReadValueAsync()).get();
+    if (result->Status != GattCommunicationStatus::Success)
+      return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+  }
+  catch (std::exception &e)
+  {
+    throw STRING_RUNTIME_EXCEPTION(e.what());
+  }
+  catch (Exception ^e)
+  {
+    throw CX_EXCEPTION(e);
+  }
+  catch (...)
+  {
+    throw STRING_RUNTIME_EXCEPTION("Unknown error reading Characteristic.");
+  }
   // convert to C++ data.
   ReturnValue retval = ConvertFromIBuffer(result->Value, buffer, bufferLength);
   if (!retval)
@@ -329,6 +344,14 @@ ReturnValue BleDeviceWinRT::Verify()
     if (!result || (result->Status != GattCommunicationStatus::Success))
       throw;
   }
+  catch (std::exception &e)
+  {
+    throw STRING_RUNTIME_EXCEPTION(e.what());
+  }
+  catch (Exception ^e)
+  {
+    throw CX_EXCEPTION(e);
+  }
   catch (...) {
     throw STRING_RUNTIME_EXCEPTION("Could not find Client Characteristic Configuration Descriptor in Status Characteristic.");
   }
@@ -356,13 +379,21 @@ ReturnValue BleDeviceWinRT::ControlPointWrite(unsigned char * buffer, unsigned i
     GattCommunicationStatus status = create_task(mCharacteristicControlPoint->WriteValueAsync(b, GattWriteOption::WriteWithResponse)).get();
     if (status != GattCommunicationStatus::Success) {
       if (mConfiguration.logging & BleApiLogging::Debug)
-        std::cout << "Error: " << status.ToString()->Data() << std::endl;
+        std::wcout << L"Error: " << status.ToString()->Data() << std::endl;
       return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
     }
   }
   catch (std::exception &e)
   {
-    STRING_RUNTIME_EXCEPTION(e.what());
+    throw STRING_RUNTIME_EXCEPTION(e.what());
+  }
+  catch (Exception ^e)
+  {
+    throw CX_EXCEPTION(e);
+  }
+  catch (...)
+  {
+    throw STRING_RUNTIME_EXCEPTION("Unknown error writing to Control Point.");
   }
 
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
@@ -376,22 +407,32 @@ ReturnValue BleDeviceWinRT::ControlPointLengthRead(unsigned int * length)
   ReturnValue retval;
   unsigned char buffer[512];
   unsigned int bufferLength = sizeof (buffer);
+  GattReadResult ^result;
 
   try {
     // read characteristic
-    GattReadResult ^result = create_task(mCharacteristicControlPointLength->ReadValueAsync()).get();
+    result = create_task(mCharacteristicControlPointLength->ReadValueAsync()).get();
     if (!result || (result->Status != GattCommunicationStatus::Success))
       return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
-
-    // convert to C++ data.
-    retval = ConvertFromIBuffer(result->Value, buffer, bufferLength);
-    if (!retval)
-      return retval;
   }
   catch (std::exception &e)
   {
-    STRING_RUNTIME_EXCEPTION(e.what());
+    throw STRING_RUNTIME_EXCEPTION(e.what());
   }
+  catch (Exception ^e)
+  {
+    throw CX_EXCEPTION(e);
+  }
+  catch (...)
+  {
+    STRING_RUNTIME_EXCEPTION("Unknown error reading Control Point Length");
+  }
+
+  // convert to C++ data.
+  retval = ConvertFromIBuffer(result->Value, buffer, bufferLength);
+  if (!retval)
+    return retval;
+
   // calculate length
   *length = 0;
   for (unsigned int i = 0; i < bufferLength; i++)
@@ -413,11 +454,26 @@ ReturnValue BleDeviceWinRT::U2FVersionRead(unsigned char * buffer, unsigned int 
     throw STRING_RUNTIME_EXCEPTION("Device not initialized.");
 
   ReturnValue retval;
+  GattReadResult ^result;
 
-  // read characteristic
-  GattReadResult ^result = create_task(mCharacteristicVersion->ReadValueAsync()).get();
-  if (result->Status != GattCommunicationStatus::Success)
-    return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+  try {
+    // read characteristic
+    result = create_task(mCharacteristicVersion->ReadValueAsync()).get();
+    if (result->Status != GattCommunicationStatus::Success)
+      return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+  }
+  catch (std::exception &e)
+  {
+    throw STRING_RUNTIME_EXCEPTION(e.what());
+  }
+  catch (Exception ^e)
+  {
+    throw CX_EXCEPTION(e);
+  }
+  catch (...)
+  {
+    throw STRING_RUNTIME_EXCEPTION("Unknown error reading Version Characteristic.");
+  }
 
   // convert to C++ data.
   retval = ConvertFromIBuffer(result->Value, buffer, *bufferLength);
@@ -432,10 +488,26 @@ ReturnValue BleDeviceWinRT::U2FVersionBitfieldRead(unsigned char * buffer, unsig
   if ((mDevice == nullptr)||(mCharacteristicVersionBitfield == nullptr))
     throw STRING_RUNTIME_EXCEPTION("Device not initialized.");
 
-  // read characteristic
-  GattReadResult ^result = create_task(mCharacteristicVersionBitfield->ReadValueAsync()).get();
-  if (result->Status != GattCommunicationStatus::Success)
-    return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+  GattReadResult ^result;
+
+  try {
+    // read characteristic
+    result = create_task(mCharacteristicVersionBitfield->ReadValueAsync()).get();
+    if (result->Status != GattCommunicationStatus::Success)
+      return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+  }
+  catch (std::exception &e)
+  {
+    throw STRING_RUNTIME_EXCEPTION(e.what());
+  }
+  catch (Exception ^e)
+  {
+    throw CX_EXCEPTION(e);
+  }
+  catch (...)
+  {
+    throw STRING_RUNTIME_EXCEPTION("Unknown error reading VersionBitfield Characteristic.");
+  }
 
   // convert to C++ data.
   ReturnValue retval = ConvertFromIBuffer(result->Value, buffer, *bufferLength);
@@ -465,15 +537,44 @@ ReturnValue BleDeviceWinRT::RegisterNotifications(pEventHandler eventHandler)
   }
 
   // check if notifications are already enabled.
-  GattReadClientCharacteristicConfigurationDescriptorResult ^result = create_task(mCharacteristicStatus->ReadClientCharacteristicConfigurationDescriptorAsync()).get();
-  if (!result || (result->Status != GattCommunicationStatus::Success))
-    return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+  GattReadClientCharacteristicConfigurationDescriptorResult ^result;
+  try {
+    result = create_task(mCharacteristicStatus->ReadClientCharacteristicConfigurationDescriptorAsync()).get();
+    if (!result || (result->Status != GattCommunicationStatus::Success))
+      return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+  }
+  catch (std::exception &e)
+  {
+    throw STRING_RUNTIME_EXCEPTION(e.what());
+  }
+  catch (Exception ^e)
+  {
+    throw CX_EXCEPTION(e);
+  }
+  catch (...)
+  {
+    throw STRING_RUNTIME_EXCEPTION("Unknown error reading Client Characteristic Configuration Descriptor");
+  }
 
   // if not, enable them.
   if (result->ClientCharacteristicConfigurationDescriptor != GattClientCharacteristicConfigurationDescriptorValue::Notify) {
+    try {
     GattCommunicationStatus status = create_task(mCharacteristicStatus->WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue::Notify)).get();
     if (status != GattCommunicationStatus::Success)
       return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+    }
+    catch (std::exception &e)
+    {
+      throw STRING_RUNTIME_EXCEPTION(e.what());
+    }
+    catch (Exception ^e)
+    {
+      throw CX_EXCEPTION(e);
+    }
+    catch (...)
+    {
+      throw STRING_RUNTIME_EXCEPTION("Unknown error writing Client Characteristic Configuration Descriptor");
+    }
   }
 
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
@@ -520,7 +621,7 @@ bool BleDeviceWinRT::SupportsVersion(U2FVersion version)
 
   // verify 0 bytes are omitted.
   if ((buffer[bufferLength - 1] == 0))
-      throw STRING_RUNTIME_EXCEPTION("U2FVersionBitField characteristic ends in 0 byte, byte must be omitted.");
+    throw STRING_RUNTIME_EXCEPTION("U2FVersionBitField characteristic ends in 0 byte, byte must be omitted.");
 
   // check version bits
   switch (version) {
@@ -600,10 +701,25 @@ ReturnValue BleDeviceWinRT::Unpair()
     mNotificationProxy = nullptr;
   }
 
-  DeviceUnpairingResult ^result = create_task(mDevice->DeviceInformation->Pairing->UnpairAsync()).get();
-  if (result->Status != DeviceUnpairingResultStatus::Unpaired)
-    return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;;
-  
+  DeviceUnpairingResult ^result;
+  try {
+    result = create_task(mDevice->DeviceInformation->Pairing->UnpairAsync()).get();
+    if (result->Status != DeviceUnpairingResultStatus::Unpaired)
+      return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+  }
+  catch (std::exception &e)
+  {
+    throw STRING_RUNTIME_EXCEPTION(e.what());
+  }
+  catch (Exception ^e)
+  {
+    throw CX_EXCEPTION(e);
+  }
+  catch (...)
+  {
+    throw STRING_RUNTIME_EXCEPTION("Unknown error unpairing.");
+  }
+
   mDevice = nullptr;
   mService = nullptr;
   mCharacteristicControlPointLength = nullptr;
@@ -634,12 +750,29 @@ ReturnValue BleDeviceWinRT::Pair()
   // wait until we detect the device
   WaitForDevice();
 
-  DevicePairingResult ^result = create_task(mDevice->DeviceInformation->Pairing->Custom->PairAsync(
+  DevicePairingResult ^result;
+  
+  try {
+    result = create_task(mDevice->DeviceInformation->Pairing->Custom->PairAsync(
       // support all pairing kinds.
       DevicePairingKinds::ConfirmOnly | DevicePairingKinds::ConfirmPinMatch | DevicePairingKinds::DisplayPin | DevicePairingKinds::ProvidePin,
       // require at least encryption.
       DevicePairingProtectionLevel::Encryption
     )).get();
+  }
+  catch (std::exception &e)
+  {
+    throw STRING_RUNTIME_EXCEPTION(e.what());
+  }
+  catch (Exception ^e)
+  {
+    throw CX_EXCEPTION(e);
+  }
+  catch (...)
+  {
+    throw STRING_RUNTIME_EXCEPTION("Unknown error pairing.");
+  }
+
   if (result->Status != DevicePairingResultStatus::Paired) {
     if ((mConfiguration.logging & BleApiLogging::Debug) != 0)
       std::wcout << L"Pairing failed with: " << result->Status.ToString()->Data() << std::endl;

@@ -46,7 +46,7 @@ std::string bytes2ascii(const char *ptr, int len)
 
 std::string bytes2ascii(const std::string & s)
 {
-	return bytes2ascii(s.data(), s.size());
+	return bytes2ascii(s.data(), (int)s.size());
 }
 
 void checkPause()
@@ -79,8 +79,8 @@ bool getCertificate(const U2F_REGISTER_RESP & rsp, std::string * cert)
 
 	unsigned char *p = (unsigned char *)&rsp.keyHandleCertSig[len];
 
-	CHECK_GE(certlen, 4 + 25);	// must be larger than the header we test + the asn sequence for the public key (see below)
-	CHECK_EQ(p[0], 0x30);
+	CHECK_GE(certlen, 4 + 25, "Certificate length must be larger than the header we test + the asn sequence for the public key");	// must be larger than the header we test + the asn sequence for the public key (see below)
+	CHECK_EQ(p[0], 0x30, "Certificate encoding always starts wtih 0x30");
 
 	int seqlen, headerlen;
 	switch (p[1]) {
@@ -93,8 +93,8 @@ bool getCertificate(const U2F_REGISTER_RESP & rsp, std::string * cert)
 		headerlen = 4;
 		break;
 	default:
-		CHECK_GE(p[1], 0x81);
-		CHECK_LE(p[1], 0x82);
+		CHECK_GE(p[1], 0x81, "Certificate validation: Value must be 0x81 or 0x82");
+		CHECK_LE(p[1], 0x82, "Certificate validation: Value must be 0x81 or 0x82");
 		return false;
 	}
 
@@ -113,12 +113,12 @@ bool getSignature(const U2F_REGISTER_RESP & rsp, int certsize,
 	size_t siglength = sizeof(rsp.keyHandleCertSig) - sigoffset;
 	const unsigned char *p = &rsp.keyHandleCertSig[sigoffset];
 
-	CHECK_GE(siglength, 2);	// why 2?
-	CHECK_EQ(p[0], 0x30);	// start of signature
+	CHECK_GE(siglength, 2, "Signature length must always be greater than 2.");
+	CHECK_EQ(p[0], 0x30, "Signature always must start with 0x30");	// start of signature
 
 	// extract and check length
 	size_t seqlen = p[1];
-	CHECK_LE(seqlen, siglength - 2);
+	CHECK_LE(seqlen, siglength - 2, "Signature length does not match encoded length.");
 
 	sig->assign(reinterpret_cast < const char *>(p), seqlen + 2);
 	return true;

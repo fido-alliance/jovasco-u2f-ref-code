@@ -43,12 +43,42 @@
 #	define GREENSTART "\x1b[32m"
 #endif
 
-#define CHECK_EQ(a,b) { if ((a)!=(b)) { std::cerr << REDSTART << "CHECK_EQ fail at " << CHECK_INFO#a << " != "#b << ":" << COLOREND << std::endl; AbortOrNot(); }}
-#define CHECK_NE(a,b) { if ((a)==(b)) { std::cerr << REDSTART << "CHECK_NE fail at " << CHECK_INFO#a << " == "#b << ":" << COLOREND << std::endl; AbortOrNot(); }}
-#define CHECK_GE(a,b) { if ((a)<(b))  { std::cerr << REDSTART << "CHECK_GE fail at " << CHECK_INFO#a << " < " #b << ":" << COLOREND << std::endl; AbortOrNot(); }}
-#define CHECK_GT(a,b) { if ((a)<=(b)) { std::cerr << REDSTART << "CHECK_GT fail at " << CHECK_INFO#a << " < " #b << ":" << COLOREND << std::endl; AbortOrNot(); }}
-#define CHECK_LT(a,b) { if ((a)>=(b)) { std::cerr << REDSTART << "CHECK_LT fail at " << CHECK_INFO#a << " >= "#b << ":" << COLOREND << std::endl; AbortOrNot(); }}
-#define CHECK_LE(a,b) { if ((a)>(b))  { std::cerr << REDSTART << "CHECK_LE fail at " << CHECK_INFO#a << " > " #b << ":" << COLOREND << std::endl; AbortOrNot(); }}
+#define CHECK_2(a, c) { if (a) { std::cerr << REDSTART << "CHECK_EQ fail at " << CHECK_INFO#a << ":" << c << COLOREND << std::endl; AbortOrNot(); }}
+#define CHECK_EQ_3(a,b,c) { if ((a)!=(b)) { std::cerr << REDSTART << "CHECK_EQ fail at " << CHECK_INFO#a << " != "#b << ": " c << COLOREND << std::endl; AbortOrNot(); }}
+#define CHECK_NE_3(a,b,c) { if ((a)==(b)) { std::cerr << REDSTART << "CHECK_NE fail at " << CHECK_INFO#a << " == "#b << ": " c << COLOREND << std::endl; AbortOrNot(); }}
+#define CHECK_GE_3(a,b,c) { if ((a)<(b))  { std::cerr << REDSTART << "CHECK_GE fail at " << CHECK_INFO#a << " < " #b << ": " c << COLOREND << std::endl; AbortOrNot(); }}
+#define CHECK_GT_3(a,b,c) { if ((a)<=(b)) { std::cerr << REDSTART << "CHECK_GT fail at " << CHECK_INFO#a << " < " #b << ": " c << COLOREND << std::endl; AbortOrNot(); }}
+#define CHECK_LT_3(a,b,c) { if ((a)>=(b)) { std::cerr << REDSTART << "CHECK_LT fail at " << CHECK_INFO#a << " >= "#b << ": " c << COLOREND << std::endl; AbortOrNot(); }}
+#define CHECK_LE_3(a,b,c) { if ((a)>(b))  { std::cerr << REDSTART << "CHECK_LE fail at " << CHECK_INFO#a << " > " #b << ": " c << COLOREND << std::endl; AbortOrNot(); }}
+
+#define CHECK_EQ_2(a,b)  CHECK_EQ_3(a,b,"")
+#define CHECK_NE_2(a,b)  CHECK_NE_3(a,b,"")
+#define CHECK_GE_2(a,b)  CHECK_GE_3(a,b,"")
+#define CHECK_GT_2(a,b)  CHECK_GT_3(a,b,"")
+#define CHECK_LT_2(a,b)  CHECK_LT_3(a,b,"")
+#define CHECK_LE_2(a,b)  CHECK_LE_3(a,b,"")
+
+#define CHECK_1(a)       CHECK_2(a, "");
+#define CHECK_EQ_1       CHECK_1
+#define CHECK_NE_1       CHECK_1
+#define CHECK_GE_1       CHECK_1
+#define CHECK_GT_1       CHECK_1
+#define CHECK_LT_1       CHECK_1
+#define CHECK_LE_1       CHECK_1
+
+#define EXPAND( a ) a
+#define VARGS_(_3, _2, _1, N, ...) N 
+#define VARGS(...) EXPAND(VARGS_(__VA_ARGS__, 3, 2, 1, 0))
+#define CONCAT_(a, b) a##b
+#define CONCAT(a, b) CONCAT_(a, b)
+#define INDIRECT_EXPANSION(f, a) f a
+
+#define CHECK_EQ(...) INDIRECT_EXPANSION(CONCAT(CHECK_EQ_,VARGS(__VA_ARGS__)),(__VA_ARGS__))
+#define CHECK_NE(...) INDIRECT_EXPANSION(CONCAT(CHECK_NE_,VARGS(__VA_ARGS__)),(__VA_ARGS__))
+#define CHECK_GE(...) INDIRECT_EXPANSION(CONCAT(CHECK_GE_,VARGS(__VA_ARGS__)),(__VA_ARGS__))
+#define CHECK_GT(...) INDIRECT_EXPANSION(CONCAT(CHECK_GT_,VARGS(__VA_ARGS__)),(__VA_ARGS__))
+#define CHECK_LT(...) INDIRECT_EXPANSION(CONCAT(CHECK_LT_,VARGS(__VA_ARGS__)),(__VA_ARGS__))
+#define CHECK_LE(...) INDIRECT_EXPANSION(CONCAT(CHECK_LE_,VARGS(__VA_ARGS__)),(__VA_ARGS__))
 
 #define PASS(x) { (x); std::cout << GREENSTART << "PASS("#x")" << COLOREND << std::endl; }
 

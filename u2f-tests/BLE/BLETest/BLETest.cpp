@@ -442,7 +442,7 @@ int __cdecl main(int argc, char *argv[])
       break;
     }
     std::cout << std::endl;
-    std::cout << "Pairing PIN   : " << (configuration.pin.empty() ? "NA" : configuration.pin);
+    std::cout << "Pairing PIN   : " << (configuration.pin.empty() ? "NA" : configuration.pin) << std::endl;
     std::cout << "Encryption    : " << (configuration.encrypt ? "Yes" : "No") << std::endl;
     std::cout << "Coninuous Adv : " << (configuration.continuous ? "Yes" : "No") << std::endl;
     std::cout << "Logging       : " << (configuration.logging & BleApiLogging::Info ? "Info " : "") << (configuration.logging & BleApiLogging::Debug ? "Debug " : "") << (configuration.logging & BleApiLogging::Tracing ? "Tracing" : "") << std::endl;

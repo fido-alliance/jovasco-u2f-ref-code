@@ -1,6 +1,10 @@
 
 U2F V1.1:
 
+1.1.0-beta6:
+* add support for explanation on CHECK_* macros
+* add extra error handling on exceptions
+
 1.1.0-beta5:
 * add some bluetooth radio diagnostics.
 
