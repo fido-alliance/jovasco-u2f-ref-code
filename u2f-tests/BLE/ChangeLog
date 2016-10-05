@@ -1,6 +1,9 @@
 
 U2F V1.1:
 
+1.1.0-beta8:
+* fix CHECK macro
+
 1.1.0-beta7:
 * cleanup and improve error handling in WinRT backend
 * Fix LongPing command to validate returned error.
