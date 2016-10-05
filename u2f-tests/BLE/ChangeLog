@@ -1,6 +1,11 @@
 
 U2F V1.1:
 
+1.1.0-beta7:
+* cleanup and improve error handling in WinRT backend
+* Fix LongPing command to validate returned error.
+* added locking in WinRT backend notification handling.
+
 1.1.0-beta6:
 * add support for explanation on CHECK_* macros
 * add extra error handling on exceptions

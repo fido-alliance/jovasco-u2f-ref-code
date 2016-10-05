@@ -157,6 +157,8 @@ ReturnValue BLETransportTests(BleApiConfiguration &configuration, pBleDevice dev
   std::cout << "Waiting until device disconnects..." << std::endl;
   WaitForDeviceDisconnected(configuration, dev);
 
+  // FIXME test version selection writes for 1.1
+
   bool pairingmode_sd_present = false, notpairingmode_sd_present = false;
   std::cout << "Turn on device NOT in Pairing Mode." << std::endl;
   PASS(BleApiTest_AdvertisingNotPairingMode(configuration, dev, notpairingmode_sd_present));
@@ -445,7 +447,7 @@ int __cdecl main(int argc, char *argv[])
     std::cout << "Pairing PIN   : " << (configuration.pin.empty() ? "NA" : configuration.pin) << std::endl;
     std::cout << "Encryption    : " << (configuration.encrypt ? "Yes" : "No") << std::endl;
     std::cout << "Coninuous Adv : " << (configuration.continuous ? "Yes" : "No") << std::endl;
-    std::cout << "Logging       : " << (configuration.logging & BleApiLogging::Info ? "Info " : "") << (configuration.logging & BleApiLogging::Debug ? "Debug " : "") << (configuration.logging & BleApiLogging::Tracing ? "Tracing" : "") << std::endl;
+    std::cout << "Logging       : " << (configuration.logging ? "" : "None") << (configuration.logging & BleApiLogging::Info ? "Info " : "") << (configuration.logging & BleApiLogging::Debug ? "Debug " : "") << (configuration.logging & BleApiLogging::Tracing ? "Tracing" : "") << std::endl;
     std::cout << std::endl;
 
     /* something to do? */

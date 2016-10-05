@@ -43,6 +43,8 @@ public:
     unsigned int *bufferLength);
   virtual ReturnValue U2FVersionBitfieldRead(unsigned char *buffer,
     unsigned int *bufferLength);
+  virtual ReturnValue U2FVersionBitfieldWrite(unsigned char *buffer,
+    unsigned int *bufferLength);
   virtual ReturnValue RegisterNotifications(pEventHandler eventHandler);
 
   virtual ReturnValue Sleep(unsigned int miliseconds);

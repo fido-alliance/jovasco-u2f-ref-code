@@ -165,6 +165,15 @@ ReturnValue BleApiTest_TransportLongPing(BleApiConfiguration &config, pBleDevice
 							     sent) /
 	    1000.0 << "s.";
 
+  CHECK((replyCmd == FIDO_BLE_CMD_PING)||(replyCmd == FIDO_BLE_CMD_ERROR), "Ping should return PING or ERROR.");
+  if (replyCmd == FIDO_BLE_CMD_PING) {
+    CHECK_EQ(replyLength, requestLength);
+    CHECK_EQ(memcmp(request, reply, requestLength), 0);
+  } else {
+    CHECK_EQ(replyLength, 1);
+    CHECK_EQ(replyLength, 1);
+    WARN_EQ(reply[0], ERR_INVALID_LEN);
+  }
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
@@ -198,7 +207,8 @@ ReturnValue BleApiTest_TransportLimits(BleApiConfiguration &config, pBleDevice d
 
 		received = (float)dev->TimeMs();
 
-		if (replyCmd == FIDO_BLE_CMD_PING) {
+    CHECK((replyCmd == FIDO_BLE_CMD_PING) || (replyCmd == FIDO_BLE_CMD_ERROR), "PING CMD should return PING or ERROR.");
+    if (replyCmd == FIDO_BLE_CMD_PING) {
 			CHECK_EQ(replyLength, l);
 			CHECK_EQ(memcmp(request, reply, l), 0);
 			INFO << "  Sent " << requestLength << " bytes in " <<
@@ -208,9 +218,6 @@ ReturnValue BleApiTest_TransportLimits(BleApiConfiguration &config, pBleDevice d
 			WARN_EQ(reply[0], ERR_INVALID_LEN);
 			INFO << "  Limit is smaller than " << requestLength <<
 			    " bytes.";
-		} else {
-			CHECK_EQ(((replyCmd == FIDO_BLE_CMD_ERROR)
-				  || (replyCmd == FIDO_BLE_CMD_PING)), 1);
 		}
 
 		l <<= 1;
@@ -425,16 +432,16 @@ ReturnValue BleApiTest_AdvertisingNotPairingMode(BleApiConfiguration &config, pB
   }
 
   // FIDO UUID must be advertised.
-  CHECK_EQ(ScanForUuid(shortuuids, FIDO_SERVICE_SHORTUUID), true);
+  CHECK_EQ(ScanForUuid(shortuuids, FIDO_SERVICE_SHORTUUID), true, "Missing FIDO UUID in advertisement.");
 
   // check flags
   const auto flags = adv->GetSection(BleAdvertisementSectionType::Flags);
 
   // check if fields is present.
-  CHECK_EQ(flags.empty(), false);
+  CHECK_EQ(flags.empty(), false, "Flags field is mandatory.");
     
-  // in pairing mode this needs to be non-zero
-  CHECK_EQ(flags[0] & (BleFlagFields::LEGeneralDiscoverabilityMode | BleFlagFields::LELimitedDiscoverabilityMode), 0);
+  // in non-pairing mode this needs to be zero
+  CHECK_EQ(flags[0] & (BleFlagFields::LEGeneralDiscoverabilityMode | BleFlagFields::LELimitedDiscoverabilityMode), 0, "In not pairing mode, LE General and LE Limited Discoverability bits must be 0.");
 
   servicedata_present = false;
   // check optional service data field
@@ -456,9 +463,11 @@ ReturnValue BleApiTest_AdvertisingNotPairingMode(BleApiConfiguration &config, pB
 
   // we are NOT in pairing mode, so this should fail...
   retval = dev->Pair();
-  CHECK_NE(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
+  CHECK_NE(retval, ReturnValue::BLEAPI_ERROR_SUCCESS, "Pairing must fail when not in pairing mode.");
   if (!(!retval)) 
     return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+
+  Sleep(250);
 
   // we wait for the device to turn itself off again.
   if (!config.continuous) {
@@ -488,6 +497,8 @@ ReturnValue BleApiTest_AdvertisingPairingMode(BleApiConfiguration &config, pBleD
   if (!retval)
     return retval;
 
+  Sleep(250);
+
   // collect advertisement and scan response.
   BleAdvertisement *adv, *scanresp;
   retval = dev->WaitForDevice(&adv, &scanresp);
@@ -497,9 +508,9 @@ ReturnValue BleApiTest_AdvertisingPairingMode(BleApiConfiguration &config, pBleD
   // check flags
   const auto flags = adv->GetSection(BleAdvertisementSectionType::Flags);
   //   check if fields is present.
-  CHECK_EQ(flags.empty(), false);
+  CHECK_EQ(flags.empty(), false, "The Flags field is mandatory.");
   //   in pairing mode this needs to be non-zero
-  CHECK_NE((flags[0] & (BleFlagFields::LEGeneralDiscoverabilityMode | BleFlagFields::LELimitedDiscoverabilityMode)), 0);
+  CHECK_NE((flags[0] & (BleFlagFields::LEGeneralDiscoverabilityMode | BleFlagFields::LELimitedDiscoverabilityMode)), 0, "In Pairing mode, either the LE General Discoverability or the LE Limited Discoverability mode needs to be on.");
 
   // check optional service data field in scan response
   servicedata_present = false;
@@ -514,20 +525,105 @@ ReturnValue BleApiTest_AdvertisingPairingMode(BleApiConfiguration &config, pBleD
 
     unsigned char serviceflags = servicedata[2];
     // pairing mode, flag must be on
-    CHECK_EQ(serviceflags & FIDO_BLE_SERVICEDATA_PAIRINGMODE, FIDO_BLE_SERVICEDATA_PAIRINGMODE);
+    CHECK_EQ(serviceflags & FIDO_BLE_SERVICEDATA_PAIRINGMODE, FIDO_BLE_SERVICEDATA_PAIRINGMODE, "Service Data Field is present but pairing mode bit is not set in Pairing mode.");
 
     // pairing mode, authenticated. Should require a PIN (or OOB).
     if (dev->IsAuthenticated())
-      CHECK_EQ(serviceflags & FIDO_BLE_SERVICEDATA_PASSKEYENTRY, FIDO_BLE_SERVICEDATA_PASSKEYENTRY);
+      CHECK_EQ(serviceflags & FIDO_BLE_SERVICEDATA_PASSKEYENTRY, FIDO_BLE_SERVICEDATA_PASSKEYENTRY, "The link is authenticated but the device does not indicate that it requires a Passkey Entry.");
   }
 
   INFO << "Device found. Trying to pair...";
 
   // we are in pairing mode, so this should succeed...
   retval = dev->Pair();
-  CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
+  CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS, "Pairing failed.");
   if (!retval)
     return retval;
 
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
+
+ReturnValue BleApiTest_VersionSelection(BleApiConfiguration &config, pBleDevice dev, bool &servicedata_present)
+{
+  // if we don't support V1.1, this test is not applicable.
+  if (!dev->SupportsVersion(U2FVersion::V1_1))
+    return ReturnValue::BLEAPI_ERROR_SUCCESS;
+
+  ReturnValue retval;
+  unsigned char buffer[512];
+  unsigned int  length = sizeof(buffer);
+  retval = dev->U2FVersionBitfieldRead(buffer, &length);
+  if (!retval)
+    return retval;
+
+  switch (config.version)
+  {
+  case U2FVersion::V1_1:
+    CHECK_GE(length, 1, "u2fVersionBitfield must be 1 byte or longer.");
+    break;
+  default:
+    CHECK(false, "Version not supported in this test.");
+    return ReturnValue::BLEAPI_ERROR_NOT_IMPLEMENTED;
+  }
+
+  // writing buffer
+  unsigned char writebuffer[512];
+  unsigned int  writelength = length;
+  memset(writebuffer, 0, sizeof(writebuffer));
+
+  // find a version bit. Only supports 8 first versions for now.
+  unsigned char b = 0x80;
+  while (!(buffer[0] & b) && b)
+    b >>= 1;
+  if (!b)
+    return ReturnValue::BLEAPI_ERROR_NOT_FOUND;
+
+  // write bit to versio characteristic. should work.
+  retval = dev->U2FVersionBitfieldWrite(writebuffer, &writelength);
+  CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS, "Selecting the version failed.");
+
+  return ReturnValue::BLEAPI_ERROR_SUCCESS;
+}
+
+ReturnValue BleApiTest_VersionSelectionWrong(BleApiConfiguration &config, pBleDevice dev, bool &servicedata_present)
+{
+  // if we don't support V1.1, this test is not applicable.
+  if (!dev->SupportsVersion(U2FVersion::V1_1))
+    return ReturnValue::BLEAPI_ERROR_SUCCESS;
+
+  ReturnValue retval;
+  unsigned char buffer[512];
+  unsigned int  length = sizeof(buffer);
+  retval = dev->U2FVersionBitfieldRead(buffer, &length);
+  if (!retval)
+    return retval;
+
+  switch (config.version)
+  {
+  case U2FVersion::V1_1:
+    CHECK_GE(length, 1, "u2fVersionBitfield must be 1 byte or longer.");
+    break;
+  default:
+    CHECK(false, "Version not supported in this test.");
+    return ReturnValue::BLEAPI_ERROR_NOT_IMPLEMENTED;
+  }
+
+  // writing buffer
+  unsigned char writebuffer[512];
+  unsigned int  writelength = length;
+  memset(writebuffer, 0, sizeof(writebuffer));
+
+  // find a version bit that isn't set. works only for first 8 bits.
+  unsigned char b = 0x80;
+  while ((buffer[0] & b) && b)
+    b >>= 1;
+  if (!b)
+    return ReturnValue::BLEAPI_ERROR_NOT_FOUND;
+
+  // write bit to version characteristic. should NOT work.
+  retval = dev->U2FVersionBitfieldWrite(writebuffer, &writelength);
+  CHECK_NE(retval, ReturnValue::BLEAPI_ERROR_SUCCESS, "Selecting the version failed.");
+
+  return ReturnValue::BLEAPI_ERROR_SUCCESS;
+}
+

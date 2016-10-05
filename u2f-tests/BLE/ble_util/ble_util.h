@@ -73,6 +73,7 @@
 #define CONCAT(a, b) CONCAT_(a, b)
 #define INDIRECT_EXPANSION(f, a) f a
 
+#define CHECK(...)    INDIRECT_EXPANSION(CONCAT(CHECK_,   VARGS(__VA_ARGS__)),(__VA_ARGS__))
 #define CHECK_EQ(...) INDIRECT_EXPANSION(CONCAT(CHECK_EQ_,VARGS(__VA_ARGS__)),(__VA_ARGS__))
 #define CHECK_NE(...) INDIRECT_EXPANSION(CONCAT(CHECK_NE_,VARGS(__VA_ARGS__)),(__VA_ARGS__))
 #define CHECK_GE(...) INDIRECT_EXPANSION(CONCAT(CHECK_GE_,VARGS(__VA_ARGS__)),(__VA_ARGS__))
@@ -83,6 +84,7 @@
 #define PASS(x) { (x); std::cout << GREENSTART << "PASS("#x")" << COLOREND << std::endl; }
 
 #define WARN_EQ(a,b) { if ((a)!=(b)) { std::cerr << REDSTART << "WARN_NE fail at " << CHECK_INFO#a << " != "#b << ":" << COLOREND << std::endl; if (arg_LethalWarn) AbortOrNot(); }}
+
 
 class U2F_info {
  public:

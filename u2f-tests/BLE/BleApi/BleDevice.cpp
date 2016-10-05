@@ -296,11 +296,14 @@ ReturnValue BleDevice::CommandWrite(unsigned char cmd, unsigned char *buffer,
 	*replyLength = mReceived;
 
 	if (!mReplyRetval)
-		throw(std::exception(mReplyErrorMessage));
+		throw(std::runtime_error(mReplyErrorMessage));
 
 	return mReplyRetval;
 }
 
+//
+//  Must be called under lock
+//
 void BleDevice::EventHandler(BleDevice::FIDOEventType type,
 			     unsigned char *buffer, unsigned int bufferLength)
 {
