@@ -251,3 +251,5 @@ ModelManifest.xml
 /u2f-tests/BLE/crap.exe
 /u2f-tests/BLE/bletransporttests.obj.enc
 /u2f-tests/BLE/trash.exe
+*.7z
+/u2f-tests/BLE/test

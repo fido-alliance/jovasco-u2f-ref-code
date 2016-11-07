@@ -2,6 +2,13 @@
 //
 
 #include <string>
+#include <iostream>
+#include <fstream>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+
+#include "date.h"
 
 #include "ble_util.h"
 #include "fido_apduresponses.h"
@@ -16,6 +23,137 @@ int arg_Verbose = 0;		// default
 bool arg_u2f = true;
 bool arg_transport = true;
 bool arg_iso7816 = true;
+bool arg_timestamp = false;
+
+//
+//  streambuf replacements for optionally logging to file and adding timestamps.
+//
+class teebuf : public std::streambuf
+{
+public:
+  // Construct a streambuf which tees output to both input
+  // streambufs.
+  teebuf(std::streambuf * sb1, std::streambuf * sb2)
+    : mStreamBuf1(sb1)
+    , mStreamBuf2(sb2)
+    , mNewLine(true)
+  {
+  }
+private:
+  // This tee buffer has no buffer. So every character "overflows"
+  // and can be put directly into the teed buffers.
+  virtual int overflow(int c)
+  {
+    // if last char was newline, print timestamp.
+    if (mNewLine && arg_timestamp) {
+      char buffer[32];
+      auto const now = std::chrono::system_clock::now();
+      auto const dp = floor<date::days>(now);
+      auto const date = date::year_month_day(dp);
+      auto const time = date::make_time(now-dp);
+
+      int l = snprintf(buffer, sizeof(buffer) - 1, "%04d%02d%02d %02d:%02d:%02lld.%03lld| ", (const int) date.year(), (unsigned) date.month(), (unsigned) date.day(), time.hours().count(), time.minutes().count(), time.seconds().count(), std::chrono::duration_cast<std::chrono::milliseconds>(time.subseconds()).count());
+
+      mStreamBuf1->sputn(buffer, l);
+      if (mStreamBuf2 != NULL)
+        mStreamBuf2->sputn(buffer, l);
+      mNewLine = false;
+    }
+
+    // check if this char is a newline.
+    if (c == '\n')
+      mNewLine = true;
+
+    if (c == EOF)
+    {
+      return !EOF;
+    }
+    else
+    {
+      int const r1 = mStreamBuf1->sputc(c);
+      int const r2 = (mStreamBuf2 != NULL) ? mStreamBuf2->sputc(c) : 0;
+      return r1 == EOF || r2 == EOF ? EOF : c;
+    }
+  }
+
+  // Sync both teed buffers.
+  virtual int sync()
+  {
+    int const r1 = mStreamBuf1->pubsync();
+    int const r2 = (mStreamBuf2 != NULL) ? mStreamBuf2->pubsync() : 0;
+    return r1 == 0 && r2 == 0 ? 0 : -1;
+  }
+private:
+  std::streambuf * mStreamBuf1;
+  std::streambuf * mStreamBuf2;
+  bool mNewLine;
+};
+
+class wteebuf : public std::wstreambuf
+{
+public:
+  // Construct a streambuf which tees output to both input
+  // streambufs.
+  wteebuf(std::wstreambuf * sb1, std::streambuf * sb2)
+    : mStreamBuf1(sb1)
+    , mStreamBuf2(sb2)
+    , mNewLine(true)
+  {
+  }
+private:
+  // This tee buffer has no buffer. So every character "overflows"
+  // and can be put directly into the teed buffers.
+  virtual int_type overflow(int_type c)
+  {
+    // if last char was newline, print timestamp.
+    if (mNewLine && arg_timestamp) {
+      char buffer[32];
+      auto const now = std::chrono::system_clock::now();
+      auto const dp = floor<date::days>(now);
+      auto const date = date::year_month_day(dp);
+      auto const time = date::make_time(now - dp);
+
+      int l = snprintf(buffer, sizeof(buffer) - 1, "%04d%02d%02d %02d:%02d:%02lld.%03lld| ", (const int)date.year(), (unsigned)date.month(), (unsigned)date.day(), time.hours().count(), time.minutes().count(), time.seconds().count(), std::chrono::duration_cast<std::chrono::milliseconds>(time.subseconds()).count());
+
+      // lazy conversion.
+      for(int i=0; i < l;i++)
+        mStreamBuf1->sputc(buffer[i]);
+
+      if (mStreamBuf2 != NULL)
+        mStreamBuf2->sputn(buffer, l);
+
+      mNewLine = false;
+    }
+
+    // check if this char is a newline.
+    if (c == '\n')
+      mNewLine = true;
+
+    if (c == EOF)
+    {
+      return !EOF;
+    }
+    else
+    {
+      int const r1 = mStreamBuf1->sputc(c);
+      int const r2 = (mStreamBuf2 != NULL) ? mStreamBuf2->sputc(std::streambuf::char_type(c)) : 0;
+      return r1 == EOF || r2 == EOF ? EOF : c;
+    }
+  }
+
+  // Sync both teed buffers.
+  virtual int sync()
+  {
+    int const r1 = mStreamBuf1->pubsync();
+    int const r2 = (mStreamBuf2 != NULL) ? mStreamBuf2->pubsync() : 0;
+    return r1 == 0 && r2 == 0 ? 0 : -1;
+  }
+private:
+  std::wstreambuf * mStreamBuf1;
+  std::streambuf * mStreamBuf2;
+  bool mNewLine;
+};
+
 
 #define REPLY_BUFFER_LENGTH 256
 static unsigned char reply[REPLY_BUFFER_LENGTH];
@@ -108,6 +246,9 @@ void WaitForUserPresence(BleApiConfiguration &configuration, pBleDevice dev)
     silent = true;
     if (!retval)
       continue;
+    if (dev->IsConnected() && dev->IsPaired())
+      break;
+    dev->Sleep(100);
   } while (!dev->IsConnected() && dev->IsPaired());
 
   /* register for notification to receive data */
@@ -120,7 +261,7 @@ void WaitForUserPresence(BleApiConfiguration &configuration, pBleDevice dev)
   pause("Turn on device and hit enter..");
 
   /* check for U2F Interface version */
-  retval = GetBleInterfaceVersion(dev);
+  retval = GetBleInterfaceVersion(configuration, dev);
   if (!retval)
     abort();
 
@@ -239,7 +380,7 @@ ReturnValue U2FTests(BleApiConfiguration &configuration, pBleDevice dev)
 	PASS(BleApiTest_Sign(dev, &ctr2));
 
 	// Ctr should have incremented by 1.
-	PASS(ctr2 == (ctr1 + 1));
+	PASS(((ctr2 == (ctr1 + 1)) ? ReturnValue::BLEAPI_ERROR_SUCCESS : ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR));
 
   // to be sure.
   WaitForDeviceDisconnected(configuration, dev);
@@ -251,7 +392,9 @@ void Usage(char *name)
 {
   std::cerr << "Usage: " << name << std::endl
     <<
-    " [-h] [-a] [-v] [-V] [-p] [-w] [-e] [-u] [-t] [-i] [-x] [-c] [-l] [ -d <device-identifier>] [-T] [-1.0] [-1.1] [-P <pin>]"
+    " [-h] [-a] [-v] [-V] [-p] [-w] [-e] [-u] [-t] [-i] [-x] [-c] [-l]"
+    " [ -d <device-identifier>] [-T] [-1.0] [-1.1] [-P <pin>] [-F <file>]"
+    " [-S]"
     << std::endl
     << "  -h   : this text." << std::endl
     << "  -a   : Do not abort on failed test." << std::endl
@@ -270,7 +413,9 @@ void Usage(char *name)
     << "  -1.0 : Select U2F Version 1.0" << std::endl
     << "  -1.1 : Select U2F Version 1.1 (default)" << std::endl
     << "  -P   : Provide PIN for pairing." << std::endl
-    << "  -C   : Device advertises continuously. " << std::endl;
+    << "  -C   : Device advertises continuously. " << std::endl
+    << "  -F   : Log to file." << std::endl
+    << "  -S   : Timestamp output." << std::endl
     ;
 	exit(-1);
 }
@@ -282,6 +427,7 @@ int __cdecl main(int argc, char *argv[])
 	bool arg_ShowDevices = false;
 	char *arg_DeviceIdentifier = NULL;
   BleApiConfiguration  configuration;
+  std::ofstream  *fileStream = NULL;
 
 	while (count < argc) {
 		if (!strncmp(argv[count], "-v", 2)) {
@@ -369,8 +515,46 @@ int __cdecl main(int argc, char *argv[])
     if (!strncmp(argv[count], "-C", 2)) {
       configuration.continuous = true;
     }
+    if (!strncmp(argv[count], "-S", 2)) {
+      arg_timestamp = true;
+    }
+    if (!strncmp(argv[count], "-F", 2)) {
+      ++count;
+
+      try {
+        fileStream = new std::ofstream(argv[count], std::ofstream::app);
+        if (!fileStream) {
+          std::cerr << "Error opening file " << argv[count] << std::endl;
+          return -1;
+        }
+
+      }
+      catch (std::exception e)
+      {
+        std::cerr << "Error replacing cout, cerr for file " << argv[count] << ": " << e.what() << std::endl;
+        return -1;
+      }
+    }
     ++count;
 	}
+
+  // store old streambufs.
+  std::streambuf *ocout = std::cout.rdbuf();
+  std::streambuf *ocerr = std::cerr.rdbuf();
+  std::wstreambuf *owcout = std::wcout.rdbuf();
+  std::wstreambuf *owcerr = std::wcerr.rdbuf();
+
+  // create new streambufs
+  teebuf lcout(ocout, fileStream ? fileStream->rdbuf() : NULL);
+  teebuf lcerr(ocerr, fileStream ? fileStream->rdbuf() : NULL);
+  wteebuf lwcout(owcout, fileStream ? fileStream->rdbuf() : NULL);
+  wteebuf lwcerr(owcerr, fileStream ? fileStream->rdbuf() : NULL);
+
+  // assign new streambuffs
+  std::cout.rdbuf(&lcout);
+  std::cerr.rdbuf(&lcerr);
+  std::wcout.rdbuf(&lwcout);
+  std::wcerr.rdbuf(&lwcerr);
 
   std::cout << "BLE Certification Tool " << VERSION << std::endl << std::endl;
 
@@ -497,6 +681,29 @@ int __cdecl main(int argc, char *argv[])
 	}
 
 	std::cout << std::endl << "==== Test completed. ====" << std::endl;
+
+  // flush
+  std::cout.flush();
+  std::cerr.flush();
+  std::wcout.flush();
+  std::wcerr.flush();
+
+  // restore old streams
+  if (ocout != NULL)
+    std::cout.rdbuf(ocout);
+  if (ocerr != NULL)
+    std::cerr.rdbuf(ocerr);
+  if (owcout != NULL)
+    std::wcout.rdbuf(owcout);
+  if (owcerr != NULL)
+    std::wcerr.rdbuf(owcerr);
+
+  // flush file and close
+  if (fileStream) {
+    fileStream->flush();
+    fileStream->close();
+    delete fileStream;
+  }
 
 	return 0;
 }

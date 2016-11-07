@@ -2,6 +2,10 @@
 U2F V1.1:
 
 1.1.0-beta8:
+* fix dependencies.
+* fix PASS macro to actually check ReturnValue against SUCCESS
+* add time stamping option -S
+* add file logging.
 * fix CHECK macro
 
 1.1.0-beta7:

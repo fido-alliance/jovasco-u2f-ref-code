@@ -101,6 +101,9 @@
     <ClInclude Include="BleApi\BleAdvertisementWinRT.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ble_util\date.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="COPYRIGHT" />

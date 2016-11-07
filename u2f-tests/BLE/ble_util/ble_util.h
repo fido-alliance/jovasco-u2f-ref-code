@@ -81,7 +81,7 @@
 #define CHECK_LT(...) INDIRECT_EXPANSION(CONCAT(CHECK_LT_,VARGS(__VA_ARGS__)),(__VA_ARGS__))
 #define CHECK_LE(...) INDIRECT_EXPANSION(CONCAT(CHECK_LE_,VARGS(__VA_ARGS__)),(__VA_ARGS__))
 
-#define PASS(x) { (x); std::cout << GREENSTART << "PASS("#x")" << COLOREND << std::endl; }
+#define PASS(x) { (x == ReturnValue::BLEAPI_ERROR_SUCCESS); std::cout << GREENSTART << "PASS("#x")" << COLOREND << std::endl; }
 
 #define WARN_EQ(a,b) { if ((a)!=(b)) { std::cerr << REDSTART << "WARN_NE fail at " << CHECK_INFO#a << " != "#b << ":" << COLOREND << std::endl; if (arg_LethalWarn) AbortOrNot(); }}
 

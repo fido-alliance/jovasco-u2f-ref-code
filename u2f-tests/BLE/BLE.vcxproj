@@ -48,6 +48,7 @@
     <ClInclude Include="BLETest\BLETransportTests.h" />
     <ClInclude Include="BLETest\U2FTests.h" />
     <ClInclude Include="ble_util\ble_util.h" />
+    <ClInclude Include="ble_util\date.h" />
     <ClInclude Include="ble_util\u2f.h" />
   </ItemGroup>
   <ItemGroup>

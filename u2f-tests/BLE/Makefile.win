@@ -65,7 +65,7 @@ sha256.obj: core/libmincrypt/sha256.c
 #
 ##   Generic BLE Api
 #
-BLEAPIGENERIC_HEADER=BleApi/BleApi.h BleApi/BleApiError.h BleApi/fido_apduresponses.h BleApi/fido_ble.h BleApi/BleDevice.h BleApi/BleApiTypes.h
+BLEAPIGENERIC_HEADER=BleApi/BleApi.h BleApi/BleApiError.h BleApi/fido_apduresponses.h BleApi/fido_ble.h BleApi/BleDevice.h BleApi/BleApiTypes.h ble_util/ble_util.h ble_util/u2f.h ble_util/date.h
 BLEAPIWINDOWS_HEADER=BleApi/BleApiWindows.h BleApi/BleDeviceWindows.h
 BLEAPIWINRT_HEADER=BleApi/BleApiWinRT.h BleApi/BleDeviceWinRT.h BleApi/BleAdvertisementWinRT.h
 

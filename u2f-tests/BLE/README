@@ -1,4 +1,8 @@
 
+These tools are covered under the license available in LICENSE, except
+for the ble_util/date.h file, which is covered under the license mentioned in
+that file.
+
 A number of U2F BLE conformance tests:
 
 	- BLE Transport tests
