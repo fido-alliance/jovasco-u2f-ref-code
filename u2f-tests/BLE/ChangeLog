@@ -3,6 +3,7 @@ U2F V1.1:
 
 1.1.0-beta10:
 * do some extra checks on the Device Information Service
+* add message to indicate we wait until the device disconnects before we start.
 
 1.1.0-beta9:
 * fix dependencies.
