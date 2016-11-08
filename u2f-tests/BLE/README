@@ -1,20 +1,22 @@
 
-These tools are covered under the license available in LICENSE, except
-for the ble_util/date.h file, which is covered under the license mentioned in
-that file.
+License
+	These tools are covered under the license available in LICENSE, except
+	for the ble_util/date.h file, which is covered under the license mentioned in
+	that file.
 
-A number of U2F BLE conformance tests:
+Contents
+	A number of U2F BLE conformance tests:
 
-	- BLE Transport tests
-	- U2F Raw Message tests.
-	- Limited ADPU encoding tests
+		- BLE Transport tests
+		- U2F Raw Message tests.
+		- Limited ADPU encoding tests
 
+Build Instructions
+	To build these tests you will need:
 
-To build these tests you will need:
+		git clone -b lollipop-release https://android.googlesource.com/platform/system/core/
 
-	git clone -b lollipop-release https://android.googlesource.com/platform/system/core/
-
-	If you have git support included in VS2015, this will be done automatically.
+	If you have git in your path, this will be done automatically during the build.
 
 Supported platforms (tested):
 	Windows 10 + Windows Platform SDK 10 + VS2015
@@ -25,19 +27,18 @@ Verified hardware:
 
 Building for Windows:
 	nmake -f Makefile.win
-	Open project and build with F7
+	Use VS2015 project file.
 
 Usage
+	By default the test will select the first U2F device reported by Windows.
+	You can list the available devices as follows:
 
-By default the test will select the first U2F device reported by Windows.
-You can list the available devices as follows:
+		BLECertificationTool.exe -l
 
-	BLECertificationTool.exe -l
+	Which will return the device Identifiers of the available FIDO BLE devices.
+	You can then run the test on a specific device by doing:
 
-Which will return the device Identifiers of the available FIDO BLE devices.
-You can then run the test on a specific device by doing:
-
-	BLECertificationTool.exe -d "<device identifier>"
+		BLECertificationTool.exe -d "<device identifier>"
 
 Recommended usage:
 
@@ -45,39 +46,43 @@ Recommended usage:
 
 Full usage:
 
-Usage: BLECertificationTool.exe
- [-h] [-a] [-v] [-V] [-p] [-w] [-e] [-u] [-t] [-i] [-x] [-c] [-l] [ -d <device-identifier>] [-T] [-1.0] [-1.1] [-P <pin>] [-F <file>] [-S]
-  -h   : this text.
-  -a   : Do not abort on failed test.
-  -v   : Verbose
-  -V   : Even more verbose
-  -p   : Pause at failed test
-  -w   : Warnings are treated as errors.
-  -u   : Disable U2F Raw Message tests.
-  -t   : Disable BLE Transport tests.
-  -i   : Disable U2F ISO7816-4 encoding tests.
-  -x   : Disable encrypted connection requirement.
-  -c   : Toggle ANSI colors.
-  -l   : Show all known FIDO BLE devices and exit.
-  -d   : Select specific FIDO BLE device.
-  -T   : turn on BLE level tracing.
-  -1.0 : Select U2F Version 1.0
-  -1.1 : Select U2F Version 1.1 (default)
-  -P   : Provide PIN for pairing.
-  -C   : Device advertises continuously.
-  -F   : Log to file.
-  -S   : Timestamp output.
+	Usage: BLECertificationTool.exe
+	 [-h] [-a] [-v] [-V] [-p] [-w] [-e] [-u] [-t] [-i] [-x] [-c] [-l] [ -d <device-identifier>] [-T] [-1.0] [-1.1] [-P <pin>] [-F <file>] [-S]
+	  -h   : this text.
+	  -a   : Do not abort on failed test.
+	  -v   : Verbose
+	  -V   : Even more verbose
+	  -p   : Pause at failed test
+	  -w   : Warnings are treated as errors.
+	  -u   : Disable U2F Raw Message tests.
+	  -t   : Disable BLE Transport tests.
+	  -i   : Disable U2F ISO7816-4 encoding tests.
+	  -x   : Disable encrypted connection requirement.
+	  -c   : Toggle ANSI colors.
+	  -l   : Show all known FIDO BLE devices and exit.
+	  -d   : Select specific FIDO BLE device.
+	  -T   : turn on BLE level tracing.
+	  -1.0 : Select U2F Version 1.0
+	  -1.1 : Select U2F Version 1.1 (default)
+	  -P   : Provide PIN for pairing.
+	  -C   : Device advertises continuously.
+	  -F   : Log to file.
+	  -S   : Timestamp output.
 
 
 KNOWN ISSUES:
-* Windows does not always detect advertising devices. In this case, reboot. This might happen after turning on the device or when trying to pair.
-* If logging to file is turned on, sometimes the tests fail with "Error: Unreachable". Cause unknown. Please just try again. If this happens often for you, please let me know.
+	* Windows does not always detect advertising devices. This does not resolve itself 
+		automatically, please reboot your machine. This might happen after turning on 
+		your device or when trying to pair. To see if Windows detects your device,
+		keep the Bluetooth settings window open.
+	* If logging to file is turned on, sometimes the tests fail with "Error: Unreachable".
+		Cause unknown. Please just try again. If this happens often for you, please let 
+		me know.
 
 BUGREPORTS
-If you have a problem, please include:
-* Windows version.
-* BLE Hardware + driver version
-* Detailed description of problem
-* If possible, include bluetooth tracings in ASCII format or a link to a free reader for your file type.
-
-
+	If you have a problem, please include:
+	* Windows version.
+	* BLE Hardware + driver version
+	* Detailed description of problem
+	* If possible, include bluetooth tracings in ASCII format or a link to a free reader 
+		for your trace file type.
