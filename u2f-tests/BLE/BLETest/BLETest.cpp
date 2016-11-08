@@ -27,6 +27,7 @@ bool arg_timestamp = false;
 
 //
 //  streambuf replacements for optionally logging to file and adding timestamps.
+//  doesn't buffer. slow but simple to implement.
 //
 class teebuf : public std::streambuf
 {
@@ -39,12 +40,13 @@ public:
     , mNewLine(true)
   {
   }
+
 private:
-  // This tee buffer has no buffer. So every character "overflows"
+  // This teebuf has no buffer. So every character "overflows"
   // and can be put directly into the teed buffers.
   virtual int overflow(int c)
   {
-    // if last char was newline, print timestamp.
+    // if previous char was newline, print timestamp now.
     if (mNewLine && arg_timestamp) {
       char buffer[32];
       auto const now = std::chrono::system_clock::now();
@@ -83,6 +85,7 @@ private:
     int const r2 = (mStreamBuf2 != NULL) ? mStreamBuf2->pubsync() : 0;
     return r1 == 0 && r2 == 0 ? 0 : -1;
   }
+
 private:
   std::streambuf * mStreamBuf1;
   std::streambuf * mStreamBuf2;
@@ -100,12 +103,13 @@ public:
     , mNewLine(true)
   {
   }
+
 private:
   // This tee buffer has no buffer. So every character "overflows"
   // and can be put directly into the teed buffers.
   virtual int_type overflow(int_type c)
   {
-    // if last char was newline, print timestamp.
+    // if previous char was newline, print timestamp now.
     if (mNewLine && arg_timestamp) {
       char buffer[32];
       auto const now = std::chrono::system_clock::now();
@@ -148,6 +152,7 @@ private:
     int const r2 = (mStreamBuf2 != NULL) ? mStreamBuf2->pubsync() : 0;
     return r1 == 0 && r2 == 0 ? 0 : -1;
   }
+
 private:
   std::wstreambuf * mStreamBuf1;
   std::streambuf * mStreamBuf2;
@@ -650,8 +655,11 @@ int __cdecl main(int argc, char *argv[])
 		WARN_EQ(configuration.encrypt, true);
 
     // we wait until the device is disconnected to ensure we have a clean start.
-    while (dev->IsConnected())
-      dev->Sleep(100);
+    if (dev->IsConnected()) {
+      std::cout << "'Waiting until device disconnects..." << std::endl;
+      while (dev->IsConnected())
+        dev->Sleep(100);
+    }
 
     std::cout << "=== Starting Tests === " << std::endl;
 
@@ -677,7 +685,9 @@ int __cdecl main(int argc, char *argv[])
 	catch(std::exception e) {
 		std::cout << "ERROR: " << e.what() << std::endl;
 
-		return -1;
+    std::cout << std::endl << "==== Test failed. ====" << std::endl;
+    
+    return -1;
 	}
 
 	std::cout << std::endl << "==== Test completed. ====" << std::endl;

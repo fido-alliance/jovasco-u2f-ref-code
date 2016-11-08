@@ -1,6 +1,9 @@
 
 U2F V1.1:
 
+1.1.0-beta10:
+* do some extra checks on the Device Information Service
+
 1.1.0-beta9:
 * fix dependencies.
 * fix PASS macro to actually check ReturnValue against SUCCESS

@@ -71,6 +71,7 @@ inline std::runtime_error hresult_exception(std::string file, int line, HRESULT 
             { STRING_RUNTIME_EXCEPTION( "Device does not support " #maService ); } 
 
 #define CHECK_CHARACTERISTIC_PROPERTY_SET(c, p)  if ((c->CharacteristicProperties & GattCharacteristicProperties::p) != GattCharacteristicProperties::p) throw STRING_RUNTIME_EXCEPTION(#c " does not support " #p);
+#define CHECK_CHARACTERISTIC_PROPERTY_CLEAR(c, p)  if ((c->CharacteristicProperties & GattCharacteristicProperties::p) == GattCharacteristicProperties::p) throw STRING_RUNTIME_EXCEPTION(#c " must not support " #p);
 
 static const Guid FIDO_SERVICE_GUID(0x0000FFFD, 0x0000, 0x1000, 0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB);
 static const Guid FIDO_CHARACTERISTIC_CONTROLPOINTLENGTH_GUID(0xF1D0FFF3, 0xDEAA, 0xECEE, 0xB4, 0x2F, 0xC9, 0xBA, 0x7E, 0xD6, 0x23, 0xBB);
@@ -324,16 +325,45 @@ ReturnValue BleDeviceWinRT::Verify()
       throw STRING_RUNTIME_EXCEPTION
       ("Can't find Manufacturer Name String Characteristic in Device Information Service.");
 
+    // https://www.bluetooth.com/specifications/gatt/viewer?attributeXmlFile=org.bluetooth.service.device_information.xml
+    CHECK_CHARACTERISTIC_PROPERTY_SET(manufacturerNameString->GetAt(0), Read);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(manufacturerNameString->GetAt(0), Write);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(manufacturerNameString->GetAt(0), WriteWithoutResponse);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(manufacturerNameString->GetAt(0), AuthenticatedSignedWrites);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(manufacturerNameString->GetAt(0), Notify);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(manufacturerNameString->GetAt(0), Indicate);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(manufacturerNameString->GetAt(0), WritableAuxiliaries);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(manufacturerNameString->GetAt(0), Broadcast);
+
     auto modelNumberString = dis->GetCharacteristics(GattCharacteristicUuids::ModelNumberString);
     if (!modelNumberString || (modelNumberString->Size < 1))
       throw STRING_RUNTIME_EXCEPTION
       ("Can't find Model Number String Characteristic in Device Information Service.");
+
+    // https://www.bluetooth.com/specifications/gatt/viewer?attributeXmlFile=org.bluetooth.service.device_information.xml
+    CHECK_CHARACTERISTIC_PROPERTY_SET(modelNumberString->GetAt(0), Read);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(modelNumberString->GetAt(0), Write);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(modelNumberString->GetAt(0), WriteWithoutResponse);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(modelNumberString->GetAt(0), AuthenticatedSignedWrites);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(modelNumberString->GetAt(0), Notify);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(modelNumberString->GetAt(0), Indicate);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(modelNumberString->GetAt(0), WritableAuxiliaries);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(modelNumberString->GetAt(0), Broadcast);
 
     auto firmwareRevisionString = dis->GetCharacteristics(GattCharacteristicUuids::FirmwareRevisionString);
     if (!firmwareRevisionString || (firmwareRevisionString->Size < 1))
       throw STRING_RUNTIME_EXCEPTION
       ("Can't find Firmware Revision String Characteristic in Device Information Service.");
 
+    // https://www.bluetooth.com/specifications/gatt/viewer?attributeXmlFile=org.bluetooth.service.device_information.xml
+    CHECK_CHARACTERISTIC_PROPERTY_SET(firmwareRevisionString->GetAt(0), Read);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(firmwareRevisionString->GetAt(0), Write);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(firmwareRevisionString->GetAt(0), WriteWithoutResponse);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(firmwareRevisionString->GetAt(0), AuthenticatedSignedWrites);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(firmwareRevisionString->GetAt(0), Notify);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(firmwareRevisionString->GetAt(0), Indicate);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(firmwareRevisionString->GetAt(0), WritableAuxiliaries);
+    CHECK_CHARACTERISTIC_PROPERTY_CLEAR(firmwareRevisionString->GetAt(0), Broadcast);
   }
   catch (std::runtime_error &e) {
     throw e;
@@ -397,9 +427,7 @@ ReturnValue BleDeviceWinRT::ControlPointWrite(unsigned char * buffer, unsigned i
     throw STRING_RUNTIME_EXCEPTION("Device not initialized.");
 
   if (mConfiguration.logging & BleApiLogging::Tracing)
-    std::cout << "   WRITE: " << bytes2ascii(buffer,
-      bufferLength).c_str()
-    << std::endl;
+    std::cout << "   WRITE: " << bytes2ascii(buffer, bufferLength).c_str() << std::endl;
 
   ReturnValue retval = WriteCharacteristic(mConfiguration, mCharacteristicControlPoint, buffer, bufferLength);
   if (!retval)
