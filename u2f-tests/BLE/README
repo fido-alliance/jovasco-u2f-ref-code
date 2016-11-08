@@ -17,7 +17,7 @@ To build these tests you will need:
 	If you have git support included in VS2015, this will be done automatically.
 
 Supported platforms (tested):
-	Windows 10 + Windows Platofrm SDK 10 + VS2015
+	Windows 10 + Windows Platform SDK 10 + VS2015
 
 Verified hardware:
 	Lenovo Thinkpad Bluetooth 4.0 (BCM20702A1)
@@ -25,31 +25,28 @@ Verified hardware:
 
 Building for Windows:
 	nmake -f Makefile.win
-
-
-IMPORTANT:
-	Windows 8.x does NOT support resolvable private addresses. 
-		Windows 10 does support RPA.
-	Windows 8.0 does NOT support PIN based pairing. Windows 8.1 and
-		above do.
-
+	Open project and build with F7
 
 Usage
 
 By default the test will select the first U2F device reported by Windows.
 You can list the available devices as follows:
 
-	BLETest -l
+	BLECertificationTool.exe -l
 
 Which will return the device Identifiers of the available FIDO BLE devices.
 You can then run the test on a specific device by doing:
 
-	BLETest -d "<device identifier>"
+	BLECertificationTool.exe -d "<device identifier>"
+
+Recommended usage:
+
+	BLECertificationTool.exe -v -V -T -S -d "<device identifier>"
 
 Full usage:
 
 Usage: BLECertificationTool.exe
- [-h] [-a] [-v] [-V] [-p] [-w] [-e] [-u] [-t] [-i] [-x] [-c] [-l] [ -d <device-identifier>] [-T] [-1.0] [-1.1] [-P <pin>]
+ [-h] [-a] [-v] [-V] [-p] [-w] [-e] [-u] [-t] [-i] [-x] [-c] [-l] [ -d <device-identifier>] [-T] [-1.0] [-1.1] [-P <pin>] [-F <file>] [-S]
   -h   : this text.
   -a   : Do not abort on failed test.
   -v   : Verbose
@@ -68,3 +65,19 @@ Usage: BLECertificationTool.exe
   -1.1 : Select U2F Version 1.1 (default)
   -P   : Provide PIN for pairing.
   -C   : Device advertises continuously.
+  -F   : Log to file.
+  -S   : Timestamp output.
+
+
+KNOWN ISSUES:
+* Windows does not always detect advertising devices. In this case, reboot. This might happen after turning on the device or when trying to pair.
+* If logging to file is turned on, sometimes the tests fail with "Error: Unreachable". Cause unknown. Please just try again. If this happens often for you, please let me know.
+
+BUGREPORTS
+If you have a problem, please include:
+* Windows version.
+* BLE Hardware + driver version
+* Detailed description of problem
+* If possible, include bluetooth tracings in ASCII format or a link to a free reader for your file type.
+
+
