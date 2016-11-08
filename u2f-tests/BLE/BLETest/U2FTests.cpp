@@ -53,8 +53,8 @@ ReturnValue BleApiTest_GetU2FProtocolVersion(pBleDevice dev)
 	reply[replyLength - 2] = '\0';
 
 	/* check U2F Protocol version */
-	CHECK_EQ((replyLength - 2), 6);
-	CHECK_EQ(memcmp(reply, "U2F_V2", 6), 0);
+	CHECK_EQ((replyLength - 2), 6, "U2FProtocolVersion length should be 6 bytes and 2 bytes result code.");
+	CHECK_EQ(memcmp(reply, "U2F_V2", 6), 0, "U2FProtocolVersion should be U2F_V2");
 
 	INFO << "U2F Version: " << reply;
 
@@ -80,8 +80,8 @@ ReturnValue BleApiTest_UnknownINS(pBleDevice dev)
 		return retval;
 
 	/* check reply */
-	CHECK_EQ(replyLength, 2);
-	CHECK_EQ(FIDO_RESP_INVALID_INSTRUCTION, bytes2short(reply, 0));
+	CHECK_EQ(replyLength, 2, "expects a 2 byte error reply.");
+  CHECK_EQ(FIDO_RESP_INVALID_INSTRUCTION, bytes2short(reply, 0), "expects FIDO_RESP_INVALID_INSTRUCTION (0x6D00).");
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -106,8 +106,8 @@ ReturnValue BleApiTest_BadCLA(pBleDevice dev)
 		return retval;
 
 	/* check reply */
-	CHECK_EQ(replyLength, 2);
-	CHECK_NE(FIDO_RESP_SUCCESS, bytes2short(reply, 0));
+	CHECK_EQ(replyLength, 2, "expects a 2 byte error reply.");
+  CHECK_NE(FIDO_RESP_SUCCESS, bytes2short(reply, 0), "message does not accept FIDO_RESP_SUCCESS (0x9000).");
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -129,8 +129,8 @@ ReturnValue BleApiTest_VersionWrongLength(pBleDevice dev)
 		return retval;
 
 	/* check reply */
-	CHECK_EQ(replyLength, 2);
-	CHECK_EQ(FIDO_RESP_WRONG_LENGTH, bytes2short(reply, 0));
+	CHECK_EQ(replyLength, 2, "expects a 2 byte error reply.");
+	CHECK_EQ(FIDO_RESP_WRONG_LENGTH, bytes2short(reply, 0), "message expects FIDO_RESP_WRONG_LENGTH (0x6700).");
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -154,8 +154,8 @@ ReturnValue BleApiTest_RegisterWrongLength(pBleDevice dev)
 		return retval;
 
 	/* check reply */
-	CHECK_EQ(replyLength, 2);
-	CHECK_EQ(FIDO_RESP_WRONG_LENGTH, bytes2short(reply, 0));
+	CHECK_EQ(replyLength, 2, "expects a 2 byte error reply.");
+	CHECK_EQ(FIDO_RESP_WRONG_LENGTH, bytes2short(reply, 0), "message expects FIDO_RESP_WRONG_LENGTH (0x6700).");
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -205,22 +205,22 @@ ReturnValue BleApiTest_Enroll(pBleDevice dev, int expectedSW12)
 	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
 	if (expectedSW12 != FIDO_RESP_SUCCESS) {
-		CHECK_EQ(expectedSW12, bytes2short(reply, replyLength - 2));
-		CHECK_EQ(replyLength, 2);
+		CHECK_EQ(expectedSW12, bytes2short(reply, replyLength - 2), "Returned error does not match expected value.");
+		CHECK_EQ(replyLength, 2, "Returned value does not match expected length.");
 		return ReturnValue::BLEAPI_ERROR_SUCCESS;
 	}
 
 	/* check reply */
-	CHECK_EQ(replyCmd, FIDO_BLE_CMD_MSG);
-	CHECK_EQ(FIDO_RESP_SUCCESS, bytes2short(reply, replyLength - 2));
-	CHECK_NE(replyLength, 2);
+	CHECK_EQ(replyCmd, FIDO_BLE_CMD_MSG, "Reply is not a FIDO_BLE_CMD_MSG (0x83)");
+	CHECK_EQ(FIDO_RESP_SUCCESS, bytes2short(reply, replyLength - 2), "Status code is not FIDO_RESP_SUCCESS (0x9000)");
+	CHECK_NE(replyLength, 2, "Reply length is only status code.");
 
-	CHECK_LE(replyLength - 2, sizeof(U2F_REGISTER_RESP));
+	CHECK_LE(replyLength - 2, sizeof(U2F_REGISTER_RESP), "Returned register response does not match expected length.");
 
 	memcpy(&regRsp, reply, replyLength - 2);
 
-	CHECK_EQ(regRsp.registerId, U2F_REGISTER_ID);
-	CHECK_EQ(regRsp.pubKey.format, UNCOMPRESSED_POINT);
+	CHECK_EQ(regRsp.registerId, U2F_REGISTER_ID, "Register ID is not 0x05");
+	CHECK_EQ(regRsp.pubKey.format, UNCOMPRESSED_POINT, "Public Key format is not uncompressed point.");
 
 	INFO << "Enroll: " << (replyLength -
 			       2) << " bytes in " << ((float)(dev->TimeMs() -
@@ -229,21 +229,21 @@ ReturnValue BleApiTest_Enroll(pBleDevice dev, int expectedSW12)
 
 	// Check crypto of enroll response.
 	std::string cert;
-	CHECK_EQ(getCertificate(regRsp, &cert), true);
+	CHECK_EQ(getCertificate(regRsp, &cert), true, "Cannot extract certificate.");
 	INFO << "cert: " << bytes2ascii(cert);
 
 	std::string pk;
-	CHECK_EQ(getSubjectPublicKey(cert, &pk), true);
+	CHECK_EQ(getSubjectPublicKey(cert, &pk), true, "Cannot extract public key.");
 	INFO << "pk  : " << bytes2ascii(pk);
 
 	std::string sig;
-	CHECK_EQ(getSignature(regRsp, static_cast<int>(cert.size()), &sig), true);
+	CHECK_EQ(getSignature(regRsp, static_cast<int>(cert.size()), &sig), true, "Cannot extract signature.");
 	INFO << "sig : " << bytes2ascii(sig);
 
 	// Parse signature into two integers.
 	p256_int sig_r, sig_s;
 	CHECK_EQ(1, dsa_sig_unpack((uint8_t *) (sig.data()), static_cast<int>(sig.size()),
-				   &sig_r, &sig_s));
+				   &sig_r, &sig_s), "Cannot unpack signature");
 
 	// Compute hash as integer.
 	const uint8_t *hash;
@@ -262,13 +262,13 @@ ReturnValue BleApiTest_Enroll(pBleDevice dev, int expectedSW12)
 	INFO << "hash : " << bytes2ascii((char *)hash, 32);
 
 	// Parse subject public key into two integers.
-	CHECK_EQ(pk.size(), P256_POINT_SIZE);
+	CHECK_EQ(pk.size(), P256_POINT_SIZE, "Public key does not match P256 point size.");
 	p256_int pk_x, pk_y;
 	p256_from_bin((uint8_t *) pk.data() + 1, &pk_x);
 	p256_from_bin((uint8_t *) pk.data() + 1 + P256_SCALAR_SIZE, &pk_y);
 
 	// Verify signature.
-	CHECK_EQ(1, p256_ecdsa_verify(&pk_x, &pk_y, &h, &sig_r, &sig_s));
+	CHECK_EQ(1, p256_ecdsa_verify(&pk_x, &pk_y, &h, &sig_r, &sig_s), "Signature does not match.");
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -320,20 +320,20 @@ ReturnValue BleApiTest_Sign(pBleDevice dev, uint32_t *ctr, int expectedSW12, boo
 	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
 	if (expectedSW12 != FIDO_RESP_SUCCESS) {
-		CHECK_EQ(expectedSW12, bytes2short(reply, replyLength - 2));
-		CHECK_EQ(replyLength, 2);
+		CHECK_EQ(expectedSW12, bytes2short(reply, replyLength - 2), "Returned error does not match expected value.");
+		CHECK_EQ(replyLength, 2, "Returned value does not match expected length.");
 		return ReturnValue::BLEAPI_ERROR_SUCCESS;
 	}
 
-	CHECK_EQ(replyCmd, FIDO_BLE_CMD_MSG);
-	CHECK_EQ(FIDO_RESP_SUCCESS, bytes2short(reply, replyLength - 2));
-	CHECK_NE(replyLength, 2);
-	CHECK_LE(replyLength - 2, sizeof(U2F_AUTHENTICATE_RESP));
+	CHECK_EQ(replyCmd, FIDO_BLE_CMD_MSG, "Reply is not a FIDO_BLE_CMD_MSG (0x83)");
+	CHECK_EQ(FIDO_RESP_SUCCESS, bytes2short(reply, replyLength - 2), "Status code is not FIDO_RESP_SUCCESS (0x9000)");
+	CHECK_NE(replyLength, 2, "Reply length is only status code.");
+	CHECK_LE(replyLength - 2, sizeof(U2F_AUTHENTICATE_RESP), "Returned authentication response does not match expected length.");
 
 	U2F_AUTHENTICATE_RESP resp;
 	memcpy(&resp, reply, replyLength - 2);
 
-	CHECK_EQ(resp.flags, 0x01);
+	CHECK_EQ(resp.flags, 0x01, "Flags value in authentication response is always 1");
 
 	INFO << "Sign: " << (replyLength - 2) << " bytes in "
 	    << ((float)(dev->TimeMs() - t)) / 1000.0 << "s";
@@ -360,7 +360,7 @@ ReturnValue BleApiTest_Sign(pBleDevice dev, uint32_t *ctr, int expectedSW12, boo
 	p256_from_bin(regRsp.pubKey.y, &pk_y);
 
 	// Verify signature.
-	CHECK_EQ(1, p256_ecdsa_verify(&pk_x, &pk_y, &h, &sig_r, &sig_s));
+	CHECK_EQ(1, p256_ecdsa_verify(&pk_x, &pk_y, &h, &sig_r, &sig_s), "Signature does not match.");
 
   *ctr = ntohl(resp.ctr);
 
@@ -384,14 +384,14 @@ ReturnValue BleApiTest_TestEncodingShortAnyLength(pBleDevice dev)
 	if (!retval)
 		return retval;
 
-	CHECK_EQ(FIDO_RESP_SUCCESS, bytes2short(reply, replyLength - 2));
+	CHECK_EQ(FIDO_RESP_SUCCESS, bytes2short(reply, replyLength - 2), "expects FIDO_RESP_SUCCESS (0x9000)");
 
 	/* drop reply status code. */
 	reply[replyLength - 2] = '\0';
 
 	/* check U2F Protocol version */
-	CHECK_EQ((replyLength - 2), 6);
-	CHECK_EQ(memcmp(reply, "U2F_V2", 6), 0);
+  CHECK_EQ((replyLength - 2), 6, "U2FProtocolVersion length should be 6 bytes and 2 bytes result code.");
+  CHECK_EQ(memcmp(reply, "U2F_V2", 6), 0, "U2FProtocolVersion should be U2F_V2");
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -413,14 +413,15 @@ ReturnValue BleApiTest_TestEncodingShortExactLength(pBleDevice dev)
 	if (!retval)
 		return retval;
 
-	CHECK_EQ(FIDO_RESP_SUCCESS, bytes2short(reply, replyLength - 2));
+	CHECK_EQ(FIDO_RESP_SUCCESS, bytes2short(reply, replyLength - 2), "expects FIDO_RESP_SUCCESS (0x9000)");
 
 	/* drop reply status code. */
 	reply[replyLength - 2] = '\0';
 
 	/* check U2F Protocol version */
-	CHECK_EQ((replyLength - 2), 6);
-	CHECK_EQ(memcmp(reply, "U2F_V2", 6), 0);
+  CHECK_EQ((replyLength - 2), 6, "U2FProtocolVersion length should be 6 bytes and 2 bytes result code.");
+  CHECK_EQ(memcmp(reply, "U2F_V2", 6), 0, "U2FProtocolVersion should be U2F_V2");
+
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -444,7 +445,7 @@ ReturnValue BleApiTest_TestEncodingShortWrongLength(pBleDevice dev)
 
 	/* check U2F Protocol version */
 	CHECK_EQ(replyLength, 2);
-	CHECK_EQ(FIDO_RESP_WRONG_LENGTH, bytes2short(reply, 0));
+	CHECK_EQ(FIDO_RESP_WRONG_LENGTH, bytes2short(reply, 0), "expects FIDO_RESP_WRONG_LENGTH (0x6700)");
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -466,14 +467,14 @@ ReturnValue BleApiTest_TestEncodingLongAnyLength(pBleDevice dev)
 	if (!retval)
 		return retval;
 
-	CHECK_EQ(FIDO_RESP_SUCCESS, bytes2short(reply, replyLength - 2));
+	CHECK_EQ(FIDO_RESP_SUCCESS, bytes2short(reply, replyLength - 2), "expects FIDO_RESP_SUCCESS (0x9000)");
 
 	/* drop reply status code. */
 	reply[replyLength - 2] = '\0';
 
 	/* check U2F Protocol version */
-	CHECK_EQ((replyLength - 2), 6);
-	CHECK_EQ(memcmp(reply, "U2F_V2", 6), 0);
+  CHECK_EQ((replyLength - 2), 6, "U2FProtocolVersion length should be 6 bytes and 2 bytes result code.");
+  CHECK_EQ(memcmp(reply, "U2F_V2", 6), 0, "U2FProtocolVersion should be U2F_V2");
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -495,14 +496,14 @@ ReturnValue BleApiTest_TestEncodingLongExactLength(pBleDevice dev)
 	if (!retval)
 		return retval;
 
-	CHECK_EQ(FIDO_RESP_SUCCESS, bytes2short(reply, replyLength - 2));
+	CHECK_EQ(FIDO_RESP_SUCCESS, bytes2short(reply, replyLength - 2), "expects FIDO_RESP_SUCCESS (0x9000)");
 
 	/* drop reply status code. */
 	reply[replyLength - 2] = '\0';
 
 	/* check U2F Protocol version */
-	CHECK_EQ((replyLength - 2), 6);
-	CHECK_EQ(memcmp(reply, "U2F_V2", 6), 0);
+  CHECK_EQ((replyLength - 2), 6, "U2FProtocolVersion length should be 6 bytes and 2 bytes result code.");
+  CHECK_EQ(memcmp(reply, "U2F_V2", 6), 0, "U2FProtocolVersion should be U2F_V2");
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -526,7 +527,7 @@ ReturnValue BleApiTest_TestEncodingLongWrongLength(pBleDevice dev)
 
 	/* check U2F Protocol version */
 	CHECK_EQ(replyLength, 2);
-	CHECK_EQ(FIDO_RESP_WRONG_LENGTH, bytes2short(reply, 0));
+  CHECK_EQ(FIDO_RESP_WRONG_LENGTH, bytes2short(reply, 0), "expects FIDO_RESP_WRONG_LENGTH (0x6700)");
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -571,10 +572,10 @@ ReturnValue BleApiTest_TestEncodingLongDataAnyLength(pBleDevice dev)
 			      reply, &replyLength);
 	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
-	CHECK_EQ(replyCmd, FIDO_BLE_CMD_MSG);
-	CHECK_EQ(FIDO_RESP_SUCCESS, bytes2short(reply, replyLength - 2));
+  CHECK_EQ(replyCmd, FIDO_BLE_CMD_MSG, "Reply is not a FIDO_BLE_CMD_MSG (0x83)");
+	CHECK_EQ(FIDO_RESP_SUCCESS, bytes2short(reply, replyLength - 2), "expects FIDO_RESP_SUCCESS (0x9000)");
 	CHECK_NE(replyLength, 2);
-	CHECK_LE(replyLength - 2, sizeof(U2F_AUTHENTICATE_RESP));
+  CHECK_LE(replyLength - 2, sizeof(U2F_AUTHENTICATE_RESP), "Returned authentication response does not match expected length.");
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -620,10 +621,10 @@ ReturnValue BleApiTest_TestEncodingLongDataExactLength(pBleDevice dev)
 			      reply, &replyLength);
 	CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS);
 
-	CHECK_EQ(replyCmd, FIDO_BLE_CMD_MSG);
-	CHECK_EQ(FIDO_RESP_SUCCESS, bytes2short(reply, replyLength - 2));
+  CHECK_EQ(replyCmd, FIDO_BLE_CMD_MSG, "Reply is not a FIDO_BLE_CMD_MSG (0x83)");
+	CHECK_EQ(FIDO_RESP_SUCCESS, bytes2short(reply, replyLength - 2), "expects FIDO_RESP_SUCCESS (0x9000)");
 	CHECK_NE(replyLength, 2);
-	CHECK_LE(replyLength - 2, sizeof(U2F_AUTHENTICATE_RESP));
+  CHECK_LE(replyLength - 2, sizeof(U2F_AUTHENTICATE_RESP), "Returned authentication response does not match expected length.");
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -670,7 +671,7 @@ ReturnValue BleApiTest_TestEncodingLongDataWrongLength(pBleDevice dev)
 
 	/* check U2F Protocol version */
 	CHECK_EQ(replyLength, 2);
-	CHECK_EQ(FIDO_RESP_WRONG_LENGTH, bytes2short(reply, 0));
+  CHECK_EQ(FIDO_RESP_WRONG_LENGTH, bytes2short(reply, 0), "expects FIDO_RESP_WRONG_LENGTH (0x6700)");
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }

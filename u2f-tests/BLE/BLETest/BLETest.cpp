@@ -637,6 +637,7 @@ int __cdecl main(int argc, char *argv[])
     std::cout << "Encryption    : " << (configuration.encrypt ? "Yes" : "No") << std::endl;
     std::cout << "Coninuous Adv : " << (configuration.continuous ? "Yes" : "No") << std::endl;
     std::cout << "Logging       : " << (configuration.logging ? "" : "None") << (configuration.logging & BleApiLogging::Info ? "Info " : "") << (configuration.logging & BleApiLogging::Debug ? "Debug " : "") << (configuration.logging & BleApiLogging::Tracing ? "Tracing" : "") << std::endl;
+    std::cout << "Timestamping  : " << (arg_timestamp ? "On" : "Off") << std::endl;
     std::cout << std::endl;
 
     /* something to do? */

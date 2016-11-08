@@ -43,13 +43,13 @@
 #	define GREENSTART "\x1b[32m"
 #endif
 
-#define CHECK_2(a, c) { if (!(a)) { std::cerr << REDSTART << "CHECK_EQ fail at " << CHECK_INFO#a << ":" << c << COLOREND << std::endl; AbortOrNot(); }}
-#define CHECK_EQ_3(a,b,c) { if ((a)!=(b)) { std::cerr << REDSTART << "CHECK_EQ fail at " << CHECK_INFO#a << " != "#b << ": " c << COLOREND << std::endl; AbortOrNot(); }}
-#define CHECK_NE_3(a,b,c) { if ((a)==(b)) { std::cerr << REDSTART << "CHECK_NE fail at " << CHECK_INFO#a << " == "#b << ": " c << COLOREND << std::endl; AbortOrNot(); }}
-#define CHECK_GE_3(a,b,c) { if ((a)<(b))  { std::cerr << REDSTART << "CHECK_GE fail at " << CHECK_INFO#a << " < " #b << ": " c << COLOREND << std::endl; AbortOrNot(); }}
-#define CHECK_GT_3(a,b,c) { if ((a)<=(b)) { std::cerr << REDSTART << "CHECK_GT fail at " << CHECK_INFO#a << " < " #b << ": " c << COLOREND << std::endl; AbortOrNot(); }}
-#define CHECK_LT_3(a,b,c) { if ((a)>=(b)) { std::cerr << REDSTART << "CHECK_LT fail at " << CHECK_INFO#a << " >= "#b << ": " c << COLOREND << std::endl; AbortOrNot(); }}
-#define CHECK_LE_3(a,b,c) { if ((a)>(b))  { std::cerr << REDSTART << "CHECK_LE fail at " << CHECK_INFO#a << " > " #b << ": " c << COLOREND << std::endl; AbortOrNot(); }}
+#define CHECK_2(a, c) { if (!(a)) { std::cerr << REDSTART << __FUNCTION__ << "[" << __LINE__ << "]" << "CHECK_EQ fail at " << CHECK_INFO#a << ":" << c << COLOREND << std::endl; AbortOrNot(); }}
+#define CHECK_EQ_3(a,b,c) { if ((a)!=(b)) { std::cerr << REDSTART << __FUNCTION__ << "[" << __LINE__ << "]" << "CHECK_EQ fail at " << CHECK_INFO#a << " != "#b << ": " c << COLOREND << std::endl; AbortOrNot(); }}
+#define CHECK_NE_3(a,b,c) { if ((a)==(b)) { std::cerr << REDSTART << __FUNCTION__ << "[" << __LINE__ << "]" << "CHECK_NE fail at " << CHECK_INFO#a << " == "#b << ": " c << COLOREND << std::endl; AbortOrNot(); }}
+#define CHECK_GE_3(a,b,c) { if ((a)<(b))  { std::cerr << REDSTART << __FUNCTION__ << "[" << __LINE__ << "]" << "CHECK_GE fail at " << CHECK_INFO#a << " < " #b << ": " c << COLOREND << std::endl; AbortOrNot(); }}
+#define CHECK_GT_3(a,b,c) { if ((a)<=(b)) { std::cerr << REDSTART << __FUNCTION__ << "[" << __LINE__ << "]" << "CHECK_GT fail at " << CHECK_INFO#a << " < " #b << ": " c << COLOREND << std::endl; AbortOrNot(); }}
+#define CHECK_LT_3(a,b,c) { if ((a)>=(b)) { std::cerr << REDSTART << __FUNCTION__ << "[" << __LINE__ << "]" << "CHECK_LT fail at " << CHECK_INFO#a << " >= "#b << ": " c << COLOREND << std::endl; AbortOrNot(); }}
+#define CHECK_LE_3(a,b,c) { if ((a)>(b))  { std::cerr << REDSTART << __FUNCTION__ << "[" << __LINE__ << "]" << "CHECK_LE fail at " << CHECK_INFO#a << " > " #b << ": " c << COLOREND << std::endl; AbortOrNot(); }}
 
 #define CHECK_EQ_2(a,b)  CHECK_EQ_3(a,b,"")
 #define CHECK_NE_2(a,b)  CHECK_NE_3(a,b,"")

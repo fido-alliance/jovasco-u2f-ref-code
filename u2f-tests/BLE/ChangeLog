@@ -2,6 +2,8 @@
 U2F V1.1:
 
 1.1.0-beta10:
+* update SAMPLELOG
+* add extra messages in the checks to explain why they fail.
 * do some extra checks on the Device Information Service
 * add message to indicate we wait until the device disconnects before we start.
 
