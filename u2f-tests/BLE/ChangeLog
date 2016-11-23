@@ -1,6 +1,11 @@
 
 U2F V1.1:
 
+1.1.1:
+* changing error reply catch wait to 1500ms. Should be well below the 2000 ms kErrorWaitMillies.
+    https://github.com/fido-alliance/jovasco-u2f-ref-code/issues/2
+* Fixed WARN_EQ too many parameters warnings.
+
 1.1.0:
 * release
 

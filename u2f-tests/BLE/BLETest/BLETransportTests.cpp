@@ -133,8 +133,8 @@ ReturnValue BleApiTest_TransportUnknown(BleApiConfiguration &config, pBleDevice 
 	    requestLength << " bytes in " << (received - sent) / 1000.0 << "s.";
 
 	CHECK_EQ(replyCmd, FIDO_BLE_CMD_ERROR, "Reply should be FIDO_BLE_CMD_ERROR (0xBF).");
-	WARN_EQ(replyLength, 1, "Reply should be 1 byte long.");
-	WARN_EQ(reply[0], ERR_INVALID_CMD, "Reply should contain ERR_INVALID_CMD (0x01)");
+	WARN_EQ(replyLength, 1/* , "Reply should be 1 byte long." */);
+	WARN_EQ(reply[0], ERR_INVALID_CMD/* , "Reply should contain ERR_INVALID_CMD (0x01)" */);
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -171,7 +171,7 @@ ReturnValue BleApiTest_TransportLongPing(BleApiConfiguration &config, pBleDevice
     CHECK_EQ(memcmp(request, reply, requestLength), 0, "Ping reply must be equal to ping request.");
   } else {
     CHECK_EQ(replyLength, 1,"Error Reply should contain 1 data byte.");
-    WARN_EQ(reply[0], ERR_INVALID_LEN, "Reply should be ERR_INVALID_LEN (0x03)");
+    WARN_EQ(reply[0], ERR_INVALID_LEN /*, "Reply should be ERR_INVALID_LEN (0x03)" */);
   }
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -214,7 +214,7 @@ ReturnValue BleApiTest_TransportLimits(BleApiConfiguration &config, pBleDevice d
 			    (received - sent) / 1000.0 << "s.";
 		} else if (replyCmd == FIDO_BLE_CMD_ERROR) {
 			CHECK_EQ(replyLength, 1, "Error Reply should contain 1 data byte.");
-			WARN_EQ(reply[0], ERR_INVALID_LEN, "Reply should be ERR_INVALID_LEN (0x03)");
+			WARN_EQ(reply[0], ERR_INVALID_LEN /*, "Reply should be ERR_INVALID_LEN (0x03)" */);
 			INFO << "  Limit is smaller than " << requestLength <<
 			    " bytes.";
 		}
@@ -224,7 +224,7 @@ ReturnValue BleApiTest_TransportLimits(BleApiConfiguration &config, pBleDevice d
 	while (replyCmd == FIDO_BLE_CMD_PING);
 
   INFO << "Waiting to make sure all error replies are received before we continue.";
-	dev->Sleep(2000);
+	dev->Sleep(1500);
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -267,11 +267,11 @@ ReturnValue BleApiTest_TransportNotCont(BleApiConfiguration &config, pBleDevice 
 	CHECK_EQ(fragmentReplyBuffer[0], FIDO_BLE_CMD_ERROR, "Expected FIDO_BLE_CMD_ERROR (0xBF)");
 
 	// check total reply length
-	WARN_EQ(fragmentReplyBufferLength, 3 /* header */  + 1 /* data */, "Expected fragmentation header and 1 data byte.");
+	WARN_EQ(fragmentReplyBufferLength, 3 /* header */  + 1 /* data *//* , "Expected fragmentation header and 1 data byte." */);
 	// check 1 data byte length
-	WARN_EQ((((short)fragmentReplyBuffer[1]) << 8 | fragmentReplyBuffer[2]), 1, "Expected 1 data byte.");
+	WARN_EQ((((short)fragmentReplyBuffer[1]) << 8 | fragmentReplyBuffer[2]), 1 /*, "Expected 1 data byte." */);
 	// check invalid seq error
-	WARN_EQ(fragmentReplyBuffer[3], ERR_INVALID_SEQ, "Expected ERR_INVALID_SEQ (0x04)");
+	WARN_EQ(fragmentReplyBuffer[3], ERR_INVALID_SEQ/* , "Expected ERR_INVALID_SEQ (0x04)" */);
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -317,13 +317,13 @@ ReturnValue BleApiTest_TransportBadSequence(BleApiConfiguration &config, pBleDev
   CHECK_EQ(fragmentReplyBuffer[0], FIDO_BLE_CMD_ERROR, "Expected FIDO_BLE_CMD_ERROR (0xBF)");
 
 	// should have length of 3 header + 1 data byte
-  WARN_EQ(fragmentReplyBufferLength, 3 /* header */ + 1 /* data */, "Expected fragmentation header and 1 data byte.");
+  WARN_EQ(fragmentReplyBufferLength, 3 /* header */ + 1 /* data *//* , "Expected fragmentation header and 1 data byte." */);
 
 	// check 1 data byte length
-  WARN_EQ((((short)fragmentReplyBuffer[1]) << 8 | fragmentReplyBuffer[2]), 1, "Expected 1 data byte.");
+  WARN_EQ((((short)fragmentReplyBuffer[1]) << 8 | fragmentReplyBuffer[2]), 1 /*, "Expected 1 data byte."*/);
 
 	// check invalid seq error
-  WARN_EQ(fragmentReplyBuffer[3], ERR_INVALID_SEQ, "Expected ERR_INVALID_SEQ (0x04)");
+  WARN_EQ(fragmentReplyBuffer[3], ERR_INVALID_SEQ/* , "Expected ERR_INVALID_SEQ (0x04)" */);
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -356,13 +356,13 @@ ReturnValue BleApiTest_TransportContFirst(BleApiConfiguration &config, pBleDevic
   CHECK_EQ(fragmentReplyBuffer[0], FIDO_BLE_CMD_ERROR, "Expected FIDO_BLE_CMD_ERROR (0xBF)");
 
 	// should have length of 3 header + 1 data byte
-	WARN_EQ(fragmentReplyBufferLength, 3 /* header */  + 1 /* data */, "Expected fragmentation header and 1 data byte.");
+	WARN_EQ(fragmentReplyBufferLength, 3 /* header */  + 1 /* data *//* , "Expected fragmentation header and 1 data byte." */);
 	// check 1 data byte length
 	WARN_EQ((((short)fragmentReplyBuffer[1]) << 8 | fragmentReplyBuffer[2]),
-		1, "Expected 1 data byte.");
+		1 /*, "Expected 1 data byte."*/);
 
 	// check invalid seq error
-	WARN_EQ(fragmentReplyBuffer[3], ERR_INVALID_SEQ, "Expected ERR_INVALID_SEQ (0x04)");
+	WARN_EQ(fragmentReplyBuffer[3], ERR_INVALID_SEQ/* , "Expected ERR_INVALID_SEQ (0x04)" */);
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
@@ -392,12 +392,12 @@ ReturnValue BleApiTest_TransportTooLong(BleApiConfiguration &config, pBleDevice 
 	CHECK_EQ(fragmentReplyBuffer[0], FIDO_BLE_CMD_ERROR, "Expected FIDO_BLE_CMD_ERROR (0xBF)");
 
 	// should have length of 3 header + 1 data byte
-	WARN_EQ(fragmentReplyBufferLength, 3 /* header */  + 1 /* data */, "Expected fragmentation header and 1 data byte.");
+	WARN_EQ(fragmentReplyBufferLength, 3 /* header */  + 1 /* data *//* , "Expected fragmentation header and 1 data byte." */);
 	// check 1 data byte length
 	WARN_EQ((((short)fragmentReplyBuffer[1]) << 8 | fragmentReplyBuffer[2]),
-		1, "Expected 1 data byte.");
+		1 /*, "Expected 1 data byte." */);
 	// check invalid seq error
-	WARN_EQ(fragmentReplyBuffer[3], ERR_INVALID_LEN, "Expected ERR_INVALID_SEQ (0x04)");
+	WARN_EQ(fragmentReplyBuffer[3], ERR_INVALID_LEN/* , "Expected ERR_INVALID_SEQ (0x04)" */);
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
