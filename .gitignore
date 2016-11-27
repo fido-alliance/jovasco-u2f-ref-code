@@ -255,3 +255,4 @@ ModelManifest.xml
 /u2f-tests/BLE/test
 /u2f-tests/BLE/BLECertificationTool-1.1.0.zip
 *.ex_
+*.zip
