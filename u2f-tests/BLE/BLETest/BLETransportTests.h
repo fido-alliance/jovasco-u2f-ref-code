@@ -36,5 +36,7 @@ extern ReturnValue BleApiTest_TransportContFirst(BleApiConfiguration &config, pB
 extern ReturnValue BleApiTest_TransportTooLong(BleApiConfiguration &config, pBleDevice dev);
 extern ReturnValue BleApiTest_AdvertisingNotPairingMode(BleApiConfiguration &config, pBleDevice dev, bool &servicedata_present);
 extern ReturnValue BleApiTest_AdvertisingPairingMode(BleApiConfiguration &config, pBleDevice dev, bool &servicedata_present);
+extern ReturnValue BleApiTest_VersionSelection(BleApiConfiguration &config, pBleDevice dev);
+extern ReturnValue BleApiTest_VersionSelectionWrong(BleApiConfiguration &config, pBleDevice dev);
 
 #endif

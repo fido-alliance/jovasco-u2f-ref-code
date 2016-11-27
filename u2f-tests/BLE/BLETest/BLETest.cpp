@@ -300,10 +300,12 @@ ReturnValue BLETransportTests(BleApiConfiguration &configuration, pBleDevice dev
   if (configuration.version == U2FVersion::V1_0)
     return ReturnValue::BLEAPI_ERROR_SUCCESS;
 
+  PASS(BleApiTest_VersionSelection(configuration, dev));
+  PASS(BleApiTest_VersionSelectionWrong(configuration, dev));
+
+  // pairing tests
   std::cout << "Waiting until device disconnects..." << std::endl;
   WaitForDeviceDisconnected(configuration, dev);
-
-  // FIXME test version selection writes for 1.1
 
   bool pairingmode_sd_present = false, notpairingmode_sd_present = false;
   std::cout << "Turn on device NOT in Pairing Mode." << std::endl;
@@ -315,7 +317,7 @@ ReturnValue BLETransportTests(BleApiConfiguration &configuration, pBleDevice dev
   WaitForDeviceDisconnected(configuration, dev); // just to be sure.
 
   // if the service data is present in 1 mode, it needs to be present in both.
-  CHECK_EQ(notpairingmode_sd_present, pairingmode_sd_present)
+  CHECK_EQ(notpairingmode_sd_present, pairingmode_sd_present);
 
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }

@@ -498,9 +498,35 @@ ReturnValue BleDeviceWinRT::U2FVersionBitfieldWrite(unsigned char * buffer, unsi
   if (mConfiguration.logging & BleApiLogging::Tracing)
     std::cout << "   WRITE: " << bytes2ascii(buffer, *bufferLength).c_str() << std::endl;
 
-  ReturnValue retval = WriteCharacteristic(mConfiguration, mCharacteristicControlPoint, buffer, *bufferLength);
-  if (!retval)
-    return retval;
+  IBuffer ^b = ConvertToIBuffer(buffer, *bufferLength);
+  try {
+    // write characteristic
+    GattCommunicationStatus status = create_task(mCharacteristicVersionBitfield->WriteValueAsync(b, GattWriteOption::WriteWithResponse)).get();
+    if (status != GattCommunicationStatus::Success) {
+      if (mConfiguration.logging & BleApiLogging::Debug)
+        std::wcout << L"Error: " << status.ToString()->Data() << std::endl;
+      return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+    }
+  }
+  catch (std::exception &e)
+  {
+    throw STRING_RUNTIME_EXCEPTION(e.what());
+  }
+  catch (Exception ^e)
+  {
+    // accept write not permitted or unknown error on illegal values.
+    if (e->HResult == E_BLUETOOTH_ATT_WRITE_NOT_PERMITTED)
+      return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+    if (e->HResult == E_BLUETOOTH_ATT_UNKNOWN_ERROR)
+      return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+
+    // otherwise throw exception
+    throw CX_EXCEPTION(e);
+  }
+  catch (...)
+  {
+    throw STRING_RUNTIME_EXCEPTION("Unknown error writing to characteristic.");
+  }
 
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }

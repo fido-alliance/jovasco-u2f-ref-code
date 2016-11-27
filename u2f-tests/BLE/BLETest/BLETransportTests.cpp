@@ -543,7 +543,7 @@ ReturnValue BleApiTest_AdvertisingPairingMode(BleApiConfiguration &config, pBleD
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
-ReturnValue BleApiTest_VersionSelection(BleApiConfiguration &config, pBleDevice dev, bool &servicedata_present)
+ReturnValue BleApiTest_VersionSelection(BleApiConfiguration &config, pBleDevice dev)
 {
   // if we don't support V1.1, this test is not applicable.
   if (!dev->SupportsVersion(U2FVersion::V1_1))
@@ -571,21 +571,22 @@ ReturnValue BleApiTest_VersionSelection(BleApiConfiguration &config, pBleDevice 
   unsigned int  writelength = length;
   memset(writebuffer, 0, sizeof(writebuffer));
 
-  // find a version bit. Only supports 8 first versions for now.
+  // find a version bit, code only supports 8 first versions for now.
   unsigned char b = 0x80;
   while (!(buffer[0] & b) && b)
     b >>= 1;
   if (!b)
     return ReturnValue::BLEAPI_ERROR_NOT_FOUND;
 
-  // write bit to versio characteristic. should work.
+  // write bit to version characteristic. should work.
+  writebuffer[0] = b;
   retval = dev->U2FVersionBitfieldWrite(writebuffer, &writelength);
   CHECK_EQ(retval, ReturnValue::BLEAPI_ERROR_SUCCESS, "Selecting the version failed.");
 
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
-ReturnValue BleApiTest_VersionSelectionWrong(BleApiConfiguration &config, pBleDevice dev, bool &servicedata_present)
+ReturnValue BleApiTest_VersionSelectionWrong(BleApiConfiguration &config, pBleDevice dev)
 {
   // if we don't support V1.1, this test is not applicable.
   if (!dev->SupportsVersion(U2FVersion::V1_1))
@@ -613,7 +614,7 @@ ReturnValue BleApiTest_VersionSelectionWrong(BleApiConfiguration &config, pBleDe
   unsigned int  writelength = length;
   memset(writebuffer, 0, sizeof(writebuffer));
 
-  // find a version bit that isn't set. works only for first 8 bits.
+  // find a version bit that isn't set. code works only for first 8 bits.
   unsigned char b = 0x80;
   while ((buffer[0] & b) && b)
     b >>= 1;
@@ -621,9 +622,9 @@ ReturnValue BleApiTest_VersionSelectionWrong(BleApiConfiguration &config, pBleDe
     return ReturnValue::BLEAPI_ERROR_NOT_FOUND;
 
   // write bit to version characteristic. should NOT work.
+  writebuffer[0] = b;
   retval = dev->U2FVersionBitfieldWrite(writebuffer, &writelength);
-  CHECK_NE(retval, ReturnValue::BLEAPI_ERROR_SUCCESS, "Selecting the version failed.");
+  CHECK_NE(retval, ReturnValue::BLEAPI_ERROR_SUCCESS, "Selecting the version succeeded.");
 
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
-

@@ -1,6 +1,9 @@
 
 U2F V1.1:
 
+1.1.2:
+* enabled version selection tests.
+
 1.1.1:
 * changing error reply catch wait to 1500ms. Should be well below the 2000 ms kErrorWaitMillies.
     https://github.com/fido-alliance/jovasco-u2f-ref-code/issues/2
