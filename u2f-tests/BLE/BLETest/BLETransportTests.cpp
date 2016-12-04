@@ -459,7 +459,7 @@ ReturnValue BleApiTest_AdvertisingNotPairingMode(BleApiConfiguration &config, pB
     CHECK_EQ(serviceflags & FIDO_BLE_SERVICEDATA_PAIRINGMODE, 0);
   }
 
-  INFO << "Device found. Trying to pair...";
+  INFO << "Device found. Trying to pair... should fail when not in pairing mode.";
 
   // we are NOT in pairing mode, so this should fail...
   retval = dev->Pair();
