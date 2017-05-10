@@ -226,8 +226,17 @@ void pause(const std::string & prompt)
 
 void WaitForDeviceDisconnected(BleApiConfiguration &configuration, pBleDevice dev)
 {
+  // do nothing for a continuously connected authenticator
+  if (configuration.alwaysconnected)
+    return;
+
 #if defined(PLATFORM_WINDOWS) && defined(FEATURE_WINRT)
-  while (dev->IsConnected()) dev->Sleep(100);
+  if ((configuration.logging & BleApiLogging::Info) != 0)
+    std::cout << "Waiting until device disconnects..." << std::endl;
+  while (dev->IsConnected()) 
+    dev->Sleep(100);
+  if ((configuration.logging & BleApiLogging::Info) != 0)
+    std::cout << "'... disconnected." << std::endl;
 #endif
 }
 
@@ -236,32 +245,40 @@ void WaitForUserPresence(BleApiConfiguration &configuration, pBleDevice dev)
 	ReturnValue retval;
 
 #if defined(PLATFORM_WINDOWS) && defined(FEATURE_WINRT)
-  if (dev->IsConnected() && dev->IsPaired())
-    return;
+  if (!(dev->IsConnected() && dev->IsPaired()))
+  {
+    std::cout << "Turn on device." << std::endl;
+    dev->WaitForDevice();
 
-  std::cout << "Turn on device." << std::endl;
-  dev->WaitForDevice();
-
-  if ((configuration.logging & BleApiLogging::Info) != 0)
-    std::cout << "Connecting to device..." << std::endl;
-  bool silent = false;
-  do {
+    if ((configuration.logging & BleApiLogging::Info) != 0)
+      std::cout << "Connecting to device..." << std::endl;
+    bool silent = false;
+    do {
       /* trigger connection */
-    retval = GetBleInterfaceVersion(configuration, dev, silent);
-    silent = true;
-    if (!retval)
-      continue;
-    if (dev->IsConnected() && dev->IsPaired())
-      break;
-    dev->Sleep(100);
-  } while (!dev->IsConnected() && dev->IsPaired());
+      retval = GetBleInterfaceVersion(configuration, dev, silent);
+      silent = true;
+      if (!retval)
+        continue;
+      if (dev->IsConnected() && dev->IsPaired())
+        break;
+      dev->Sleep(100);
+    } while (!dev->IsConnected() && dev->IsPaired());
 
-  /* register for notification to receive data */
-  if ((configuration.logging & BleApiLogging::Info) != 0)
-    std::cout << "Registering notifications... " << std::endl;
-  retval = dev->RegisterNotifications(BleApiTestEventHandler);
-  if (retval != ReturnValue::BLEAPI_ERROR_SUCCESS)
-    throw std::runtime_error(__FILE__ ":" + std::to_string(__LINE__) + ": could not register notification although we are connected.");
+    if ((configuration.logging & BleApiLogging::Info) != 0)
+      std::cout << "... device connected." << std::endl;
+  }
+
+  if (!dev->NotificationsRegistered())
+  {
+    /* register for notification to receive data */
+    if ((configuration.logging & BleApiLogging::Info) != 0)
+      std::cout << "Registering notifications... " << std::endl;
+    retval = dev->RegisterNotifications(BleApiTestEventHandler);
+    if (retval != ReturnValue::BLEAPI_ERROR_SUCCESS)
+      throw std::runtime_error(__FILE__ ":" + std::to_string(__LINE__) + ": could not register notification although we are connected.");
+    if ((configuration.logging & BleApiLogging::Info) != 0)
+      std::cout << "... notifications registered. " << std::endl;
+  }
 #else
   pause("Turn on device and hit enter..");
 
@@ -283,9 +300,6 @@ ReturnValue BLETransportTests(BleApiConfiguration &configuration, pBleDevice dev
 
 	WaitForUserPresence(configuration, dev);
 
-	// set timeout at 30 seconds, just in case devices just doesn't answer.
-	dev->SetTimeout(30000);
-
 	PASS(BleApiTest_TransportPing(configuration, dev));
 	PASS(BleApiTest_TransportLongPing(configuration, dev));
 	PASS(BleApiTest_TransportLimits(configuration, dev));
@@ -304,7 +318,6 @@ ReturnValue BLETransportTests(BleApiConfiguration &configuration, pBleDevice dev
   PASS(BleApiTest_VersionSelectionWrong(configuration, dev));
 
   // pairing tests
-  std::cout << "Waiting until device disconnects..." << std::endl;
   WaitForDeviceDisconnected(configuration, dev);
 
   bool pairingmode_sd_present = false, notpairingmode_sd_present = false;
@@ -401,7 +414,7 @@ void Usage(char *name)
     <<
     " [-h] [-a] [-v] [-V] [-p] [-w] [-e] [-u] [-t] [-i] [-x] [-c] [-l]"
     " [ -d <device-identifier>] [-T] [-1.0] [-1.1] [-P <pin>] [-F <file>]"
-    " [-S]"
+    " [-S] [-D]"
     << std::endl
     << "  -h   : this text." << std::endl
     << "  -a   : Do not abort on failed test." << std::endl
@@ -420,7 +433,8 @@ void Usage(char *name)
     << "  -1.0 : Select U2F Version 1.0" << std::endl
     << "  -1.1 : Select U2F Version 1.1 (default)" << std::endl
     << "  -P   : Provide PIN for pairing." << std::endl
-    << "  -C   : Device advertises continuously. " << std::endl
+    << "  -C   : Device advertises continuously." << std::endl
+    << "  -D   : Device is continuously connected." << std::endl
     << "  -F   : Log to file." << std::endl
     << "  -S   : Timestamp output." << std::endl
     ;
@@ -521,6 +535,9 @@ int __cdecl main(int argc, char *argv[])
     }
     if (!strncmp(argv[count], "-C", 2)) {
       configuration.continuous = true;
+    }
+    if (!strncmp(argv[count], "-D", 2)) {
+      configuration.alwaysconnected = true;
     }
     if (!strncmp(argv[count], "-S", 2)) {
       arg_timestamp = true;
@@ -635,11 +652,11 @@ int __cdecl main(int argc, char *argv[])
       break;
     }
     std::cout << std::endl;
-    std::cout << "Pairing PIN   : " << (configuration.pin.empty() ? "NA" : configuration.pin) << std::endl;
-    std::cout << "Encryption    : " << (configuration.encrypt ? "Yes" : "No") << std::endl;
-    std::cout << "Coninuous Adv : " << (configuration.continuous ? "Yes" : "No") << std::endl;
-    std::cout << "Logging       : " << (configuration.logging ? "" : "None") << (configuration.logging & BleApiLogging::Info ? "Info " : "") << (configuration.logging & BleApiLogging::Debug ? "Debug " : "") << (configuration.logging & BleApiLogging::Tracing ? "Tracing" : "") << std::endl;
-    std::cout << "Timestamping  : " << (arg_timestamp ? "On" : "Off") << std::endl;
+    std::cout << "Pairing PIN    : " << (configuration.pin.empty() ? "NA" : configuration.pin) << std::endl;
+    std::cout << "Encryption     : " << (configuration.encrypt ? "Yes" : "No") << std::endl;
+    std::cout << "Continuous Adv : " << (configuration.continuous ? "Yes" : "No") << std::endl;
+    std::cout << "Logging        : " << (configuration.logging ? "" : "None") << (configuration.logging & BleApiLogging::Info ? "Info " : "") << (configuration.logging & BleApiLogging::Debug ? "Debug " : "") << (configuration.logging & BleApiLogging::Tracing ? "Tracing" : "") << std::endl;
+    std::cout << "Timestamping   : " << (arg_timestamp ? "On" : "Off") << std::endl;
     std::cout << std::endl;
 
     /* something to do? */
@@ -658,12 +675,12 @@ int __cdecl main(int argc, char *argv[])
 		WARN_EQ(configuration.encrypt, true);
 
     // we wait until the device is disconnected to ensure we have a clean start.
-    if (dev->IsConnected()) {
-      std::cout << "'Waiting until device disconnects..." << std::endl;
-      while (dev->IsConnected())
-        dev->Sleep(100);
-    }
+    WaitForDeviceDisconnected(configuration, dev);
 
+    // always set timeout at 30 seconds, just in case devices just doesn't answer.
+    dev->SetTimeout(30000);
+
+    // lets do this.
     std::cout << "=== Starting Tests === " << std::endl;
 
 		/* do ble transport tests */

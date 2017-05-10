@@ -59,6 +59,7 @@ typedef class BleDevice {
   virtual ReturnValue U2FVersionBitfieldWrite(unsigned char *buffer,
     unsigned int *bufferLength);
   virtual ReturnValue RegisterNotifications(pEventHandler eventHandler);
+  virtual ReturnValue UnregisterNotifications(pEventHandler eventHandler = nullptr);
 
 	// send a full command 
 	virtual ReturnValue CommandWrite(unsigned char cmd,
@@ -85,6 +86,7 @@ typedef class BleDevice {
   virtual bool IsPaired();
   virtual bool IsAdvertising();
   virtual bool IsAuthenticated();
+  virtual bool NotificationsRegistered();
 
   virtual ReturnValue Unpair();
   virtual ReturnValue Pair();

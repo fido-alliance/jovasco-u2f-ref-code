@@ -1,6 +1,14 @@
 
 U2F V1.1:
 
+1.1.4-beta1
+* improve features for continuously connected authenticators. (-D)
+	- never wait until device is disconnected.
+	- check if device is connected before trying to trigger connection
+	- improved handling of notification registration.
+	- add support for unregistering notifications (not yet used).
+* fix garbage collector exception when tool exits.
+
 1.1.3:
 * in BleApiTest_AdvertisingNotPairingMode, clarify that the pairing is supposed to fail.
 

@@ -60,13 +60,14 @@ typedef enum {
 typedef class BleApiConfiguration {
 public:
   // set defaults.
-  BleApiConfiguration() : version (V1_1), logging(Default), encrypt(true), pin(""), continuous(false) {};
+  BleApiConfiguration() : version (V1_1), logging(Default), encrypt(true), pin(""), continuous(false), alwaysconnected(false) {};
 
-  std::string     pin;      // PIN code to use for pairing.
-  U2FVersion      version;  // U2F version used by the API
-  unsigned int    logging;  // enable detailed logging
-  bool            encrypt;  // enable link encryption
-  bool            continuous; // continuous authentication
+  std::string     pin;        // PIN code to use for pairing.
+  U2FVersion      version;    // U2F version used by the API
+  unsigned int    logging;    // enable detailed logging
+  bool            encrypt;    // enable link encryption
+  bool            continuous; // continuously advertising
+  bool            alwaysconnected; // continuously connected
 } BleApiConfiguration;
 
 #endif /* _BLEAPI_BLEAPITYPES_H_ */

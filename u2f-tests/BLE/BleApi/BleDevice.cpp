@@ -94,6 +94,28 @@ ReturnValue BleDevice::RegisterNotifications(pEventHandler eventHandler)
 	return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
+ReturnValue BleDevice::UnregisterNotifications(pEventHandler eventHandler)
+{
+  if (eventHandler == nullptr)
+    return ReturnValue::BLEAPI_ERROR_SUCCESS;
+
+  // look for the event handler
+  std::vector < pEventHandler >::iterator i;
+  for (i = mEventHandlerList.begin();
+    i != mEventHandlerList.end(); i++)
+    if (*i == eventHandler)
+      break;
+
+  // if not found, return error.
+  if (i == mEventHandlerList.end())
+    return ReturnValue::BLEAPI_ERROR_NOT_FOUND;
+
+  // if found, remove from the list and return success.
+  mEventHandlerList.erase(i);
+
+  return ReturnValue::BLEAPI_ERROR_SUCCESS;
+}
+
 uint64_t BleDevice::TimeMs()
 {
 	throw std::exception("Not Implemented.");
@@ -143,6 +165,11 @@ bool BleDevice::IsAdvertising()
 }
 
 bool BleDevice::IsAuthenticated()
+{
+  throw std::exception("Not Implemented.");
+}
+
+bool BleDevice::NotificationsRegistered()
 {
   throw std::exception("Not Implemented.");
 }

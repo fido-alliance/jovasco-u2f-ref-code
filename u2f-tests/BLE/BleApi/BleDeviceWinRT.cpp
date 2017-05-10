@@ -279,7 +279,7 @@ BleDeviceWinRT::BleDeviceWinRT(pBleApi pBleApi, std::string deviceInstanceId, Wi
   , mDevice(device)
   , mDeviceInstanceId(deviceInstanceId)
   , mBluetoothAddress(device->BluetoothAddress)
-  , mNotificationsRegistered(false)
+  , mNotificationsRegisteredWithWindows(false)
   , mService(nullptr)
   , mCharacteristicControlPointLength(nullptr)
   , mCharacteristicControlPoint(nullptr)
@@ -298,8 +298,10 @@ BleDeviceWinRT::BleDeviceWinRT(pBleApi pBleApi, std::string deviceInstanceId, Wi
 
 BleDeviceWinRT::~BleDeviceWinRT()
 {
-  if (mNotificationsRegistered)
+  if (mNotificationsRegisteredWithWindows)
     mCharacteristicStatus->ValueChanged -= mRegistrationToken;
+
+  mNotificationProxy = nullptr;
 
   CloseHandle(mMutex);
 }
@@ -531,32 +533,18 @@ ReturnValue BleDeviceWinRT::U2FVersionBitfieldWrite(unsigned char * buffer, unsi
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
-
-ReturnValue BleDeviceWinRT::RegisterNotifications(pEventHandler eventHandler)
+ReturnValue BleDeviceWinRT::UnregisterNotifications(pEventHandler eventHandler)
 {
-  if ((mDevice == nullptr)||(mCharacteristicStatus == nullptr))
+  if ((mDevice == nullptr) || (mCharacteristicStatus == nullptr))
     throw STRING_RUNTIME_EXCEPTION("Device not initialized.");
 
-  ReturnValue retval = BleDevice::RegisterNotifications(eventHandler);
-  if (!retval)
-    return retval;
+  // we always do this but we ignore the return value.
+  BleDevice::RegisterNotifications(eventHandler);
 
-  if (!mNotificationsRegistered) {
-    mNotificationProxy = ref new BleDeviceEventhandlerProxy(this);
-    auto eh = ref new TypedEventHandler<GattCharacteristic^, GattValueChangedEventArgs^>(
-      mNotificationProxy, &BleDeviceEventhandlerProxy::OnNotification
-      );
-
-    mRegistrationToken = mCharacteristicStatus->ValueChanged += eh;
-    mNotificationsRegistered = true;
-  }
-
-  // check if notifications are already enabled.
-  GattReadClientCharacteristicConfigurationDescriptorResult ^result;
   try {
-    result = create_task(mCharacteristicStatus->ReadClientCharacteristicConfigurationDescriptorAsync()).get();
-    if (!result || (result->Status != GattCommunicationStatus::Success))
-      return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+    GattCommunicationStatus status = create_task(mCharacteristicStatus->WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue::None)).get();
+    if (status != GattCommunicationStatus::Success)
+      throw;
   }
   catch (std::exception &e)
   {
@@ -568,15 +556,36 @@ ReturnValue BleDeviceWinRT::RegisterNotifications(pEventHandler eventHandler)
   }
   catch (...)
   {
-    throw STRING_RUNTIME_EXCEPTION("Unknown error reading Client Characteristic Configuration Descriptor");
+    throw STRING_RUNTIME_EXCEPTION("Unknown error writing Client Characteristic Configuration Descriptor");
+  }
+}
+
+ReturnValue BleDeviceWinRT::RegisterNotifications(pEventHandler eventHandler)
+{
+  if ((mDevice == nullptr)||(mCharacteristicStatus == nullptr))
+    throw STRING_RUNTIME_EXCEPTION("Device not initialized.");
+
+  ReturnValue retval = BleDevice::RegisterNotifications(eventHandler);
+  if (!retval)
+    return retval;
+
+  if (!mNotificationsRegisteredWithWindows) {
+    mNotificationProxy = ref new BleDeviceEventhandlerProxy(this);
+    auto eh = ref new TypedEventHandler<GattCharacteristic^, GattValueChangedEventArgs^>(
+      mNotificationProxy, &BleDeviceEventhandlerProxy::OnNotification
+      );
+
+    mRegistrationToken = mCharacteristicStatus->ValueChanged += eh;
+    mNotificationsRegisteredWithWindows = true;
   }
 
-  // if not, enable them.
-  if (result->ClientCharacteristicConfigurationDescriptor != GattClientCharacteristicConfigurationDescriptorValue::Notify) {
+  // check if notifications are already enabled.
+  if (!NotificationsRegistered())
+  {
     try {
-    GattCommunicationStatus status = create_task(mCharacteristicStatus->WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue::Notify)).get();
-    if (status != GattCommunicationStatus::Success)
-      return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
+      GattCommunicationStatus status = create_task(mCharacteristicStatus->WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue::Notify)).get();
+      if (status != GattCommunicationStatus::Success)
+        return ReturnValue::BLEAPI_ERROR_UNKNOWN_ERROR;
     }
     catch (std::exception &e)
     {
@@ -593,6 +602,47 @@ ReturnValue BleDeviceWinRT::RegisterNotifications(pEventHandler eventHandler)
   }
 
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
+}
+
+bool BleDeviceWinRT::NotificationsRegistered()
+{
+  if ((mDevice == nullptr) || (mCharacteristicStatus == nullptr))
+    throw STRING_RUNTIME_EXCEPTION("Device not initialized.");
+
+  // this is called before we register with windows, so we ALWAYS need to do at least one call to
+  //    RegisterNotifications()
+  if (!mNotificationsRegisteredWithWindows)
+    return false;
+
+  // read CCC
+  GattReadClientCharacteristicConfigurationDescriptorResult ^result;
+  try {
+    result = create_task(mCharacteristicStatus->ReadClientCharacteristicConfigurationDescriptorAsync()).get();
+    if (!result || (result->Status != GattCommunicationStatus::Success))
+      throw STRING_RUNTIME_EXCEPTION("Unknown error reading Client Characteristic Configuration Descriptor");
+  }
+  catch (std::runtime_error &e)
+  {
+    throw e;
+  }
+  catch (std::exception &e)
+  {
+    throw STRING_RUNTIME_EXCEPTION(e.what());
+  }
+  catch (Exception ^e)
+  {
+    throw CX_EXCEPTION(e);
+  }
+  catch (...)
+  {
+    throw STRING_RUNTIME_EXCEPTION("Unknown error reading Client Characteristic Configuration Descriptor");
+  }
+
+  // check if notify is on
+  if ((result->ClientCharacteristicConfigurationDescriptor & GattClientCharacteristicConfigurationDescriptorValue::Notify) != GattClientCharacteristicConfigurationDescriptorValue::Notify)
+    return false;
+
+  return true;
 }
 
 ReturnValue BleDeviceWinRT::Sleep(unsigned int miliseconds)
@@ -710,9 +760,9 @@ ReturnValue BleDeviceWinRT::Unpair()
   if ((mDevice == nullptr) || !mDevice->DeviceInformation->Pairing->IsPaired)
     return ReturnValue::BLEAPI_ERROR_SUCCESS;
 
-  if (mNotificationsRegistered) {
+  if (mNotificationsRegisteredWithWindows) {
     mCharacteristicStatus->ValueChanged -= mRegistrationToken;
-    mNotificationsRegistered = false;
+    mNotificationsRegisteredWithWindows = false;
     mNotificationProxy = nullptr;
   }
 
