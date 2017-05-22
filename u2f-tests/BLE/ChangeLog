@@ -1,7 +1,9 @@
 
 U2F V1.1:
 
-1.1.4-beta1
+1.1.4-beta2:
+* move wait after pairing to BLETransportTests.cpp from BleDeviceWinRT.cpp and
+     only do it for non-continuously connected authenticators (-D)
 * improve features for continuously connected authenticators. (-D)
 	- never wait until device is disconnected.
 	- check if device is connected before trying to trigger connection
