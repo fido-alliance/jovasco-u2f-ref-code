@@ -540,6 +540,14 @@ ReturnValue BleApiTest_AdvertisingPairingMode(BleApiConfiguration &config, pBleD
   if (!retval)
     return retval;
 
+  if (config.alwaysconnected)
+    return ReturnValue::BLEAPI_ERROR_SUCCESS;
+
+  // wait until device disconnects after pairing.
+  std::cout << "Waiting until device disconnects." << std::endl;
+  while (dev->IsConnected())
+    Sleep(250);
+	
   return ReturnValue::BLEAPI_ERROR_SUCCESS;
 }
 
