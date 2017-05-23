@@ -149,4 +149,9 @@ BLECertTool.zip: $(EXENAME).exe
 	xcopy /y core\libmincrypt\NOTICE $(ARCHIVENAME)
 	move $(ARCHIVENAME)\NOTICE $(ARCHIVENAME)\LICENSE.libmincrypt
 	xcopy /y README $(ARCHIVENAME)
-	-"$(7ZIP)" a -r -mx9 -tzip $(ARCHIVENAME).zip $(ARCHIVENAME)
+	xcopy /y COPYRIGHT $(ARCHIVENAME)
+	xcopy /y SAMPLELOG $(ARCHIVENAME)
+	xcopy /y VERSION $(ARCHIVENAME)
+	xcopy /y ChangeLog $(ARCHIVENAME)
+	-"$(7ZIP)" a -r -mx9 -tzip $(ARCHIVENAME)-$(VERSION).zip $(ARCHIVENAME) -p"$(ARCHIVENAME)-$(VERSION)"
+

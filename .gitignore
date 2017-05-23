@@ -257,3 +257,4 @@ ModelManifest.xml
 *.ex_
 *.zip
 /u2f-tests/BLE/bletest.obj.enc
+/u2f-tests/BLE/BLECertTool
