@@ -325,7 +325,7 @@ ReturnValue BLETransportTests(BleApiConfiguration &configuration, pBleDevice dev
   PASS(BleApiTest_AdvertisingNotPairingMode(configuration, dev, notpairingmode_sd_present));
   WaitForDeviceDisconnected(configuration, dev); // just to be sure
 
-  if (config.alwaysconnected) {
+  if (configuration.alwaysconnected) {
     pause("Turn on device in Pairing Mode and press ENTER.");
   } else {
     std::cout << "Turn on device in Pairing Mode." << std::endl;
