@@ -1,6 +1,9 @@
 
 U2F V1.1:
 
+1.2.0:
+* add 1.2 version bit.
+
 1.1.4:
 * ask for ENTER between checking pairing mode advertisements.
 * move wait after pairing to BLETransportTests.cpp from BleDeviceWinRT.cpp and
