@@ -435,7 +435,8 @@ void Usage(char *name)
     << "  -d   : Select specific FIDO BLE device." << std::endl
     << "  -T   : turn on BLE level tracing." << std::endl
     << "  -1.0 : Select U2F Version 1.0" << std::endl
-    << "  -1.1 : Select U2F Version 1.1 (default)" << std::endl
+    << "  -1.1 : Select U2F Version 1.1" << std::endl
+    << "  -1.2 : Select U2F Version 1.2 (default)" << std::endl
     << "  -P   : Provide PIN for pairing." << std::endl
     << "  -C   : Device advertises continuously." << std::endl
     << "  -D   : Device is continuously connected." << std::endl
