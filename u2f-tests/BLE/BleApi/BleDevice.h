@@ -128,6 +128,7 @@ typedef class BleDevice {
 
   bool mSupportsVersion_1_0;
   bool mSupportsVersion_1_1;
+  bool mSupportsVersion_1_2;
 } *pBleDevice;
 
 #endif				/* _BLEAPI_BLEDEVICE_H_ */
