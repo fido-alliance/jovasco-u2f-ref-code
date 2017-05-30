@@ -510,9 +510,6 @@ int __cdecl main(int argc, char *argv[])
     if (!strncmp(argv[count], "-1.1", 4)) {
       configuration.version = U2FVersion::V1_1;
     }
-    if (!strncmp(argv[count], "-1.2", 4)) {
-      configuration.version = U2FVersion::V1_2;
-    }
     if (!strncmp(argv[count], "-d", 2)) {
 			// treat warnings as errors
 			++count;
@@ -654,9 +651,6 @@ int __cdecl main(int argc, char *argv[])
       break;
     case U2FVersion::V1_1:
       std::cout << "1.1";
-      break;
-    case U2FVersion::V1_2:
-      std::cout << "1.2";
       break;
     default:
       break;
