@@ -140,6 +140,8 @@ bool BleDevice::SupportsVersion(U2FVersion version)
     return mSupportsVersion_1_0;
   case U2FVersion::V1_1:
     return mSupportsVersion_1_1;
+  case U2FVersion::V1_2:
+    return mSupportsVersion_1_2;
   }
   return false;
 }

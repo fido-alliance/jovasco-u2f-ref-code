@@ -700,6 +700,16 @@ bool BleDeviceWinRT::SupportsVersion(U2FVersion version)
     }
 
     return false;
+  case U2FVersion::V1_2:
+    if (bufferLength < FIDO_BLE_VERSIONBITFIELD_VERSION_1_2_OFFSET)
+      return false;
+
+    if (buffer[FIDO_BLE_VERSIONBITFIELD_VERSION_1_2_OFFSET] & FIDO_BLE_VERSIONBITFIELD_VERSION_1_2_BIT) {
+      mSupportsVersion_1_2 = true;
+      return true;
+    }
+
+    return false;
   default:
     return false;
   }

@@ -24,6 +24,7 @@
 typedef enum {
   V1_0,
   V1_1,
+  V1_2,
 } U2FVersion;
 
 typedef enum {
@@ -60,7 +61,7 @@ typedef enum {
 typedef class BleApiConfiguration {
 public:
   // set defaults.
-  BleApiConfiguration() : version (V1_1), logging(Default), encrypt(true), pin(""), continuous(false), alwaysconnected(false) {};
+  BleApiConfiguration() : version (V1_2), logging(Default), encrypt(true), pin(""), continuous(false), alwaysconnected(false) {};
 
   std::string     pin;        // PIN code to use for pairing.
   U2FVersion      version;    // U2F version used by the API
