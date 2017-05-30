@@ -128,7 +128,7 @@ BLETransportTests.obj: BLETest/BLETransportTests.cpp BLETest/U2FTests.h $(BLEAPI
 #
 ## Actual BLE test executable
 #
-$(EXENAME).exe: BLETest/BLETest.cpp ble_util.obj $(BLEAPI) $(BLETEST) $(LIBMINCRYPT)
+$(EXENAME).exe: BLETest/BLETest.cpp ble_util.obj $(BLEAPI) $(BLETEST) $(LIBMINCRYPT) VERSION
         $(CXX) $(CFLAGS) BLETest/BLETest.cpp ble_util.obj $(BLEAPI) $(BLETEST) $(LIBMINCRYPT) $(LDFLAGS) -Fe$@ -link -SUBSYSTEM:CONSOLE
 
 #
