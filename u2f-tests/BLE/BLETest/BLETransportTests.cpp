@@ -611,6 +611,7 @@ ReturnValue BleApiTest_VersionSelectionWrong(BleApiConfiguration &config, pBleDe
   switch (config.version)
   {
   case U2FVersion::V1_1:
+  case U2FVersion::V1_2:
     CHECK_GE(length, 1, "u2fVersionBitfield must be 1 byte or longer.");
     break;
   default:
