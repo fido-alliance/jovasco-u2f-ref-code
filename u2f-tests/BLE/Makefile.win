@@ -4,11 +4,20 @@ ARCHIVENAME=BLECertTool
 7ZIP=C:\Program Files\7-Zip\7z.exe
 FEATURE_WINRT=1
 
-VS_PATH=C:/Program Files (x86)/Microsoft Visual Studio 14.0
-WINSDK_PATH=C:/Program Files (x86)/Windows Kits/10
+!IF [WindowsKit.bat >WindowsKit.inc]
+!ELSE
+!ERROR WindowsKit.bat failed.
+!ENDIF
+!INCLUDE WindowsKit.inc
 
-MSSDK=$(WINSDK_PATH)
-MSTOOLS=$(WINSDK_PATH)
+VS_PATH=C:/Program Files (x86)/Microsoft Visual Studio 14.0
+!IFNDEF WINDOWS_SDK
+WINDOWS_SDK = C:/Program Files (x86)/Windows Kits/10
+WINDOWS_SDK_PATHS =  $(WINDOWS_SDK_PATHS) -AI"C:/Program Files (x86)/Windows Kits/10/References/" -AI"C:/Program Files (x86)/Windows Kits/10/UnionMetaData/"
+!ENDIF
+
+MSSDK=$(WINDOWS_SDK)
+MSTOOLS=$(WINDOWS_SDK)
 
 !INCLUDE VERSION
 
@@ -31,12 +40,12 @@ CFLAGS = $(CFLAGS) -Gz
 #
 !IFDEF FEATURE_WINRT
 CFLAGS = $(CFLAGS) -DFEATURE_WINRT
-CFLAGS_WINRT = -ZW -Gm- -AI"C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/vcpackages" -AI"C:/Program Files (x86)/Windows Kits/10/References/"  -AI"C:/Program Files (x86)/Windows Kits/10/UnionMetaData/"
+CFLAGS_WINRT = -ZW -Gm- -AI"C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/vcpackages" $(WINDOWS_SDK_PATHS)
 !ELSE
 CFLAGS_WINRT =
 !ENDIF
 
-LDFLAGS = setupapi.lib ws2_32.lib
+LDFLAGS = setupapi.lib ws2_32.lib Advapi32.lib
 
 #
 ## Crypto code.
